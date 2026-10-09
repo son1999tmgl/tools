@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\tools\\StockDataTester\\StockDataTester.csproj": {}
+    "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj": {}
   },
   "projects": {
-    "D:\\tools\\StockDataTester\\StockDataTester.csproj": {
+    "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\tools\\StockDataTester\\StockDataTester.csproj",
+        "projectUniqueName": "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
         "projectName": "StockDataTester",
-        "projectPath": "D:\\tools\\StockDataTester\\StockDataTester.csproj",
+        "projectPath": "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
         "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
-        "outputPath": "D:\\tools\\StockDataTester\\obj\\",
+        "outputPath": "D:\\tools\\stock-trading-system\\StockDataTester\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

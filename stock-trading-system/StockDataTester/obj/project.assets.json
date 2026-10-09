@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "d:\\tools\\StockDataTester\\StockDataTester.csproj",
+      "projectUniqueName": "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
       "projectName": "StockDataTester",
-      "projectPath": "d:\\tools\\StockDataTester\\StockDataTester.csproj",
+      "projectPath": "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
       "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
-      "outputPath": "d:\\tools\\StockDataTester\\obj\\",
+      "outputPath": "D:\\tools\\stock-trading-system\\StockDataTester\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
