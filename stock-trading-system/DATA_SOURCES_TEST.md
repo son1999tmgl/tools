@@ -7,8 +7,9 @@
 
 | Vai trò trong hệ thống | Nguồn đề xuất | Tỷ trọng | Nhiệm vụ chính phụ trách |
 | :--- | :--- | :---: | :--- |
-| **NGUỒN CHÍNH (Core Realtime)** | **VPS Datafeed** | **85%** | Danh mục toàn thị trường, thông số Chứng quyền (CW), sổ lệnh Level 2 realtime, toàn bộ khớp lệnh trong ngày kèm chiều Mua/Bán chủ động. |
-| **NGUỒN PHỤ TRỢ (Chart & Backtest)** | **DNSE Entrade** | **15%** | Nạp chuỗi nến lịch sử quá khứ 1 phút (1m OHLCV) & nến ngày (1D) để tính chỉ báo kỹ thuật (RSI, MACD, MA) và nến Phái sinh VN30F1M. |
+| **NGUỒN CHÍNH (Core Realtime)** | **VPS Datafeed** | **85%** | Danh mục toàn thị trường (2.166 mã: Cổ phiếu, CW, Phái sinh HNX), thông số Chứng quyền (CW), sổ lệnh Level 2 realtime 57 trường, toàn bộ khớp lệnh trong ngày kèm chiều Mua/Bán chủ động. |
+| **NGUỒN PHỤ TRỢ (Chart & Backtest)** | **DNSE Entrade** | **15%** | Nạp chuỗi nến lịch sử quá khứ 1 phút (1m OHLCV) & nến ngày (1D) cho Cổ phiếu, CW và **Nến Phái sinh VN30F1M** phục vụ Backtest 2 chiều Long/Short. |
+| **BỔ SUNG THÔNG SỐ CW** | **SSI iBoard** | Bổ sung | Kéo ngày bắt đầu giao dịch (`firstTradingDate`) và CTCK phát hành cho 339 mã Chứng quyền HOSE. |
 | **NGUỒN DỰ PHÒNG VI MÔ (Optional)** | **KBSec Buddy** | Dự phòng | Bắt thứ tự khớp lệnh chi tiết đến mili-giây (nếu cần phân tích vi mô sâu). |
 
 ---
