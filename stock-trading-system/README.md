@@ -49,6 +49,8 @@
 │    - Đánh giá xác suất đúng (Win Rate %)                    │
 └─────────────────────────────────────────────────────────────┘
 
+> 📌 **Chi tiết thiết kế Database & Lưu trữ**: Xem toàn bộ cấu trúc bảng và trường dữ liệu tại [DATABASE_DESIGN.md](DATABASE_DESIGN.md).
+
 ---
 
 ## 3. Chiến Lược An Toàn Dữ Liệu & Chịu Lỗi (Data Safety & Fault-Tolerance)
