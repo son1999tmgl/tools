@@ -1,0 +1,17 @@
+[Unit]
+Description=Trading System Data Collector Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/trading-system
+ExecStart=/home/ubuntu/trading-system/TradingSystem.Collector
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=trading-collector
+Environment=DOTNET_ENVIRONMENT=Production
+
+[Install]
+WantedBy=multi-user.target

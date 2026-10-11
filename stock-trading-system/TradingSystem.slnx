@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TradingSystem.Backtest/TradingSystem.Backtest.csproj" />
+    <Project Path="src/TradingSystem.Collector/TradingSystem.Collector.csproj" />
+    <Project Path="src/TradingSystem.Core/TradingSystem.Core.csproj" />
+    <Project Path="src/TradingSystem.Infrastructure/TradingSystem.Infrastructure.csproj" />
+  </Folder>
+  <Project Path="StockDataTester/StockDataTester.csproj" />
+</Solution>

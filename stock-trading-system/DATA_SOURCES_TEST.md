@@ -55,7 +55,12 @@ Toàn bộ dữ liệu thực tế kéo từ phiên hôm nay đã được chu�
   * `intraday_trades_stock` & `intraday_trades_cw`: Lịch sử khớp lệnh toàn bộ trong ngày của `HPG` (4.452 lệnh) và CW `CACB2603` (59 lệnh).
 * [`logs/log_dnse.json`](file:///d:/tools/stock-trading-system/logs/log_dnse.json) (~151 KB): Chuỗi nến 1 phút (1.127 nến) và nến ngày 1 năm (247 nến) của Cổ phiếu và Chứng quyền.
 * [`logs/log_kbsec.json`](file:///d:/tools/stock-trading-system/logs/log_kbsec.json) (~43 KB): Lịch sử khớp lệnh Tick-by-tick chi tiết đến mili-giây có cờ Mua/Bán `B`/`S`.
-* [`logs/log_ssi.json`](file:///d:/tools/stock-trading-system/logs/log_ssi.json) (~3.5 MB): Bảng giá snapshot 3 sàn HOSE (409 mã), HNX (299 mã) và UPCOM (817 mã).
+* [`logs/log_ssi.json`](file:///f:/tools/stock-trading-system/logs/log_ssi.json) (~3.5 MB): Bảng giá snapshot 3 sàn HOSE (409 mã), HNX (299 mã) và UPCOM (817 mã).
+* [`logs/log_derivative_test.json`](file:///f:/tools/stock-trading-system/logs/log_derivative_test.json) (~242 KB): **Dữ liệu Phái sinh VN30F chuyên sâu**:
+  * **DNSE**: 723 nến 1 phút và 247 nến ngày của `VN30F1M` + 684 nến 1 phút của Chỉ số cơ sở `VN30` (tính Basis realtime).
+  * **SSI (`/stock/exchange/fu`)**: Toàn bộ thông số 14 hợp đồng Futures HNX, đầy đủ ngày niêm yết/đáo hạn, hệ số nhân 100.000, vị thế mở OI (`openInterest`), sổ lệnh L2/L3 sâu 10 bước giá, khối ngoại mua/bán, điểm số VN30 cơ sở.
+  * **KBSEC (`/trade/history/41I1GA000`)**: 100 ticks khớp lệnh Tick-by-tick của HĐTL tháng 10/2026, có cờ Mua/Bán chủ động `B`/`S`, điểm số, khối lượng từng lệnh và khối lượng lũy kế phiên.
+  * **VPS Master**: Nhận diện 4 mã HĐTL VN30 (`41I1GA000`, `41I1GB000`, `41I1GC000`, `41I1H3000`).
 
 ---
 
@@ -77,7 +82,11 @@ Toàn bộ dữ liệu thực tế kéo từ phiên hôm nay đã được chu�
 
 Bất cứ lúc nào cần chạy lại kiểm thử để cập nhật dữ liệu mới nhất:
 ```bash
-cd d:\tools\stock-trading-system
+cd f:\tools\stock-trading-system
+# Chạy toàn bộ (Cổ phiếu, CW, Phái sinh):
 dotnet run --project StockDataTester
+
+# Hoặc chỉ chạy kiểm thử nhanh Phái sinh:
+dotnet run --project StockDataTester -- --derivative
 ```
-Mã nguồn C# được cấu trúc hoàn chỉnh tại: [`StockDataTester/Program.cs`](file:///d:/tools/stock-trading-system/StockDataTester/Program.cs).
+Mã nguồn C# được cấu trúc hoàn chỉnh tại: [`StockDataTester/Program.cs`](file:///f:/tools/stock-trading-system/StockDataTester/Program.cs) và [`StockDataTester/DerivativeTester.cs`](file:///f:/tools/stock-trading-system/StockDataTester/DerivativeTester.cs).

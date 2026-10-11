@@ -26,6 +26,12 @@ class Program
         var resolvedLogDir = Path.GetFullPath(LogDir);
         Directory.CreateDirectory(resolvedLogDir);
 
+        if (args.Length > 0 && args[0].Equals("--derivative", StringComparison.OrdinalIgnoreCase))
+        {
+            await DerivativeTester.Run(resolvedLogDir);
+            return;
+        }
+
         Console.WriteLine("==========================================================================");
         Console.WriteLine(" THU THẬP VÀ LƯU TOÀN BỘ DỮ LIỆU CỦA TẤT CẢ CÁC MÃ TRÊN TOÀN THỊ TRƯỜNG");
         Console.WriteLine($" Thời gian thực hiện: {DateTime.Now:yyyy-MM-dd HH:mm:ss} (Phiên giao dịch trực tiếp)");
@@ -46,6 +52,9 @@ class Program
 
         // 4. SSI: Toàn bộ bảng giá 3 sàn HOSE, HNX, UPCOM
         await RunSsiAllSymbols(resolvedLogDir);
+
+        // 5. PHÁI SINH: Kiểm thử chuyên sâu dữ liệu Phái sinh VN30F
+        await DerivativeTester.Run(resolvedLogDir);
 
         Console.WriteLine("\n==========================================================================");
         Console.WriteLine(" [DONE] HOÀN TẤT! ĐÃ LƯU TRỌN VẸN TOÀN BỘ DỮ LIỆU CỦA TẤT CẢ CÁC MÃ RA CÁC FILE LOG!");

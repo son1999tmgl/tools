@@ -281,4 +281,22 @@
 
 [DNSE /ohlcs/derivative]──► File Parquet `bars_1m` (Phái sinh VN30F1M):
                              • t, o, h, l, c, v  ──► timestamp, open, high, low, close, volume
+
+[SSI /stock/exchange/fu] ──► Bảng `derivative_contracts` & `market_daily_bars`:
+                             • stockSymbol       ──► symbol (VD: '41I1GA000')
+                             • underlyingSymbol  ──► underlying_index ('VN30')
+                             • expirationMonth   ──► contract_month ('202610')
+                             • contractMultiplier──► contract_multiplier (100.000)
+                             • firstTradingDate  ──► first_trading_date
+                             • lastTradingDate   ──► last_trading_date / maturity_date
+                             • openInterest      ──► open_interest (OI vị thế mở qua đêm)
+                             • vn30Value         ──► Điểm số chỉ số VN30 cơ sở (tính Basis)
+                             • best1 -> best10   ──► orderbook_depth (Sổ lệnh sâu 10 bước giá)
+
+[KBSEC /trade/history]  ──► File Parquet `market_ticks` (Phái sinh Tick-by-tick):
+                             • t                 ──► timestamp (mili-giây)
+                             • LC                ──► side ('B': Long CĐ, 'S': Short CĐ)
+                             • FMP               ──► price (Điểm số khớp lệnh)
+                             • FV                ──► volume (Số hợp đồng khớp lệnh)
+                             • AVO               ──► accumulated_volume (Tổng Vol lũy kế)
 ```

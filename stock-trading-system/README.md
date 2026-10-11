@@ -131,10 +131,10 @@ Tận dụng tối đa gói miễn phí trọn đời của Oracle Cloud:
   - Lấy nến lịch sử Cổ phiếu & Phái sinh `VN30F1M` từ DNSE.
 - [x] Chuẩn hóa thiết kế Database & Lưu trữ Parquet tại [`DATABASE_DESIGN.md`](DATABASE_DESIGN.md).
 
-### Giai đoạn 2: Xây Dựng Core Crawler & Xử Lý Dữ Liệu
-- [ ] Thiết kế schema DDL Database và các C# Entity Models (Symbols, CW, Derivatives, Daily Bars, Signals, Trades).
-- [ ] Xây dựng module ghi nối tiếp WAL và nén ra file **Parquet** (`Parquet.Net`).
-- [ ] Xây dựng Worker ngầm tự động lên lịch quét đầu ngày (SSI/VPS) và thu thập trong phiên (VPS/DNSE).
+### Giai đoạn 2: Xây Dựng Core Crawler & Xử Lý Dữ Liệu (ĐÃ HOÀN THÀNH ✅)
+- [x] Thiết kế schema DDL PostgreSQL (`sql/01_init_schema_postgres.sql`) và C# Entity Models (`TradingSystem.Core`).
+- [x] Xây dựng module ghi đệm nối tiếp phi khóa WAL và nén ra Apache Parquet (`Parquet.Net` 6.1.0).
+- [x] Xây dựng Background Worker (`TradingSystem.Collector`) tự động lên lịch chạy theo phiên chứng khoán Việt Nam (08:30 Master Sync -> 09:00-14:45 Intraday Ticks -> 15:00 EOD Parquet).
 
 ### Giai đoạn 3: Xây Dựng Backtest Engine Đa Tài Sản
 - [ ] Xây dựng khung kiểm thử (Backtest Framework):

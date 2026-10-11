@@ -1,0 +1,16 @@
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\bin\Release\net10.0\TradingSystem.Infrastructure.deps.json
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\bin\Release\net10.0\TradingSystem.Infrastructure.dll
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\bin\Release\net10.0\TradingSystem.Infrastructure.pdb
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\bin\Release\net10.0\TradingSystem.Core.dll
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\bin\Release\net10.0\TradingSystem.Core.pdb
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.csproj.AssemblyReference.cache
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.AssemblyInfoInputs.cache
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.AssemblyInfo.cs
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.csproj.CoreCompileInputs.cache
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.sourcelink.json
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingS.B5E12315.Up2Date
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.dll
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\refint\TradingSystem.Infrastructure.dll
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\TradingSystem.Infrastructure.pdb
+f:\tools\stock-trading-system\src\TradingSystem.Infrastructure\obj\Release\net10.0\ref\TradingSystem.Infrastructure.dll

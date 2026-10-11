@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj": {}
+    "F:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj": {}
   },
   "projects": {
-    "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj": {
+    "F:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
+        "projectUniqueName": "F:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
         "projectName": "StockDataTester",
-        "projectPath": "D:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
-        "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
-        "outputPath": "D:\\tools\\stock-trading-system\\StockDataTester\\obj\\",
+        "projectPath": "F:\\tools\\stock-trading-system\\StockDataTester\\StockDataTester.csproj",
+        "packagesPath": "C:\\Users\\son19\\.nuget\\packages\\",
+        "outputPath": "F:\\tools\\stock-trading-system\\StockDataTester\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\son19\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,6 +26,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
