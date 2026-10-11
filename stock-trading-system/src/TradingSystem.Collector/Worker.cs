@@ -34,6 +34,9 @@ public class Worker : BackgroundService
     private readonly List<string> _prioritySymbols;
     private readonly bool _runOnceImmediate;
     private readonly int _pollIntervalSec;
+    private readonly bool _collectAllSymbols;
+    private readonly int _maxDegreeOfParallelism;
+    private List<string> _activeTradingSymbols = new();
 
     public Worker(
         ILogger<Worker> logger,
@@ -58,6 +61,8 @@ public class Worker : BackgroundService
                            ?? new List<string> { "VN30F1M", "41I1GA000", "HPG", "FPT", "SSI" };
         _runOnceImmediate = _config.GetValue<bool>("CollectorSettings:RunOnceImmediate", true);
         _pollIntervalSec = _config.GetValue<int>("CollectorSettings:PollIntervalSeconds", 3);
+        _collectAllSymbols = _config.GetValue<bool>("CollectorSettings:CollectAllSymbols", true);
+        _maxDegreeOfParallelism = _config.GetValue<int>("CollectorSettings:MaxDegreeOfParallelism", 10);
     }
 
     /// <summary>
@@ -152,8 +157,12 @@ public class Worker : BackgroundService
     /// </summary>
     private async Task RunImmediateValidationAsync(CancellationToken ct)
     {
-        _logger.LogInformation("⚡ [DEMO VALIDATION] Bắt đầu chạy chu trình kiểm thử toàn diện...");
+        _logger.LogInformation("⚡ [DEMO VALIDATION] Bắt đầu chạy chu trình kiểm thử & đồng bộ toàn thị trường...");
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // 0. Đồng bộ toàn bộ Danh mục Master (Cổ phiếu, CW, Phái sinh) vào DB PostgreSQL
+        _logger.LogInformation("0. Đang đồng bộ danh mục toàn bộ mã Cổ phiếu, CW & Phái sinh vào PostgreSQL...");
+        await RunMasterSyncSafelyAsync(ct);
 
         // 1. Thử kéo chuỗi nến quá khứ từ DNSE và ghi ra Parquet
         _logger.LogInformation("1. Đang kiểm tra lưu chuỗi nến Parquet cho các mã trọng điểm...");
@@ -204,6 +213,17 @@ public class Worker : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             var syncService = scope.ServiceProvider.GetRequiredService<DataSyncService>();
             await syncService.SyncMasterCatalogAsync(ct);
+
+            // Nạp toàn bộ danh mục đang hoạt động vào bộ nhớ
+            if (_collectAllSymbols)
+            {
+                var symbols = await _vpsFeed.GetAllSymbolsAsync(ct);
+                _activeTradingSymbols = symbols.Where(s => s.IsTrading)
+                                               .Select(s => s.SymbolCode)
+                                               .Distinct()
+                                               .ToList();
+                _logger.LogInformation("📋 [ACTIVE UNIVERSE] Đã nạp {Count} mã Cổ phiếu, CW & Phái sinh đang hoạt động sẵn sàng thu thập realtime!", _activeTradingSymbols.Count);
+            }
         }
         catch (Exception ex)
         {
@@ -213,25 +233,41 @@ public class Worker : BackgroundService
 
     /// <summary>
     /// HÀM THU THẬP TRONG PHIÊN (INTRADAY - 09:00-11:30 & 13:00-14:45):
-    /// - Lấy danh sách các lệnh vừa khớp (intraday trades/ticks) từ VPS Feed.
-    /// - Đẩy lập tức vào hàng đợi đệm WAL (_walWriter.TryEnqueue) với độ trễ siêu thấp để chống mất dữ liệu.
+    /// - Hỗ trợ thu thập TOÀN BỘ thị trường (Cổ phiếu, Chứng quyền, Phái sinh).
+    /// - Chạy đa luồng song song (Parallel.ForEachAsync) với kiểm soát giới hạn tài nguyên (MaxDegreeOfParallelism).
+    /// - Đẩy lập tức vào hàng đợi đệm WAL phi khóa (_walWriter.TryEnqueue) với độ trễ siêu thấp.
     /// </summary>
     private async Task CollectIntradayTicksAsync(CancellationToken ct)
     {
-        foreach (var symbol in _prioritySymbols)
-        {
-            if (ct.IsCancellationRequested) break;
+        // Danh sách mục tiêu: toàn bộ thị trường hoặc danh sách ưu tiên
+        var targetSymbols = (_collectAllSymbols && _activeTradingSymbols.Count > 0)
+            ? _activeTradingSymbols
+            : _prioritySymbols;
 
-            // Kéo khớp lệnh trong ngày
-            var trades = await _vpsFeed.GetIntradayTradesAsync(symbol, ct);
-            if (trades.Count > 0)
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Math.Max(1, _maxDegreeOfParallelism),
+            CancellationToken = ct
+        };
+
+        await Parallel.ForEachAsync(targetSymbols, parallelOptions, async (symbol, token) =>
+        {
+            try
             {
-                foreach (var t in trades)
+                var trades = await _vpsFeed.GetIntradayTradesAsync(symbol, token);
+                if (trades.Count > 0)
                 {
-                    _walWriter.TryEnqueue(t);
+                    foreach (var t in trades)
+                    {
+                        _walWriter.TryEnqueue(t);
+                    }
                 }
             }
-        }
+            catch
+            {
+                // Bỏ qua lỗi timeout đơn lẻ để không gián đoạn toàn bộ luồng
+            }
+        });
     }
 
     /// <summary>

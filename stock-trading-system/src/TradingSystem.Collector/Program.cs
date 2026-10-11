@@ -44,9 +44,21 @@ builder.Services.AddSingleton(new WalBufferWriter(stagingDir));
 // - SsiDataFeed: Kéo dữ liệu dự phòng từ SSI
 // - DnseDataFeed: Kéo nến lịch sử (Historical OHLCV) và sổ lệnh từ DNSE
 // -------------------------------------------------------------------------------------------------
-builder.Services.AddHttpClient<VpsDataFeed>();
-builder.Services.AddHttpClient<SsiDataFeed>();
-builder.Services.AddHttpClient<DnseDataFeed>();
+builder.Services.AddHttpClient<VpsDataFeed>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+});
+builder.Services.AddHttpClient<SsiDataFeed>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+});
+builder.Services.AddHttpClient<DnseDataFeed>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+});
 
 // -------------------------------------------------------------------------------------------------
 // 4. SERVICE ĐIỀU PHỐI ĐỒNG BỘ DỮ LIỆU (DataSyncService)
