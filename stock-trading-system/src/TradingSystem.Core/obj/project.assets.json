@@ -1,31 +1,30 @@
 {
   "version": 4,
   "targets": {
-    "net10.0": {},
-    "net10.0/linux-x64": {}
+    "net10.0": {}
   },
   "libraries": {},
   "projectFileDependencyGroups": {
     "net10.0": []
   },
   "packageFolders": {
-    "C:\\Users\\son19\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\ADMIN\\.nuget\\packages\\": {},
+    "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "f:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj",
+      "projectUniqueName": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj",
       "projectName": "TradingSystem.Core",
-      "projectPath": "f:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj",
-      "packagesPath": "C:\\Users\\son19\\.nuget\\packages\\",
-      "outputPath": "f:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\obj\\",
+      "projectPath": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj",
+      "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
+      "outputPath": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\son19\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -34,7 +33,6 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -351,11 +349,6 @@
           "System.Xml.XPath": "(,4.3.32767]",
           "System.Xml.XPath.XDocument": "(,5.0.32767]"
         }
-      }
-    },
-    "runtimes": {
-      "linux-x64": {
-        "#import": []
       }
     }
   }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TradingSystem.Backtest")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+841fe7ac8458a6e8231f2d717ee4ca480a8309f9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ebad616702d30ac54d725b10e38d9a35df825f1f")]
 [assembly: System.Reflection.AssemblyProductAttribute("TradingSystem.Backtest")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TradingSystem.Backtest")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

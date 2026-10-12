@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TradingSystem.Collector")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7233965782ef1ba48307ac7759a2e96057085f07")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ebad616702d30ac54d725b10e38d9a35df825f1f")]
 [assembly: System.Reflection.AssemblyProductAttribute("TradingSystem.Collector")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TradingSystem.Collector")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -930,23 +930,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\son19\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\ADMIN\\.nuget\\packages\\": {},
+    "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "F:\\tools\\stock-trading-system\\src\\TradingSystem.Backtest\\TradingSystem.Backtest.csproj",
+      "projectUniqueName": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Backtest\\TradingSystem.Backtest.csproj",
       "projectName": "TradingSystem.Backtest",
-      "projectPath": "F:\\tools\\stock-trading-system\\src\\TradingSystem.Backtest\\TradingSystem.Backtest.csproj",
-      "packagesPath": "C:\\Users\\son19\\.nuget\\packages\\",
-      "outputPath": "F:\\tools\\stock-trading-system\\src\\TradingSystem.Backtest\\obj\\",
+      "projectPath": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Backtest\\TradingSystem.Backtest.csproj",
+      "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
+      "outputPath": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Backtest\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\son19\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -955,7 +955,6 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -963,11 +962,11 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "F:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj": {
-              "projectPath": "F:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj"
+            "D:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj": {
+              "projectPath": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Core\\TradingSystem.Core.csproj"
             },
-            "F:\\tools\\stock-trading-system\\src\\TradingSystem.Infrastructure\\TradingSystem.Infrastructure.csproj": {
-              "projectPath": "F:\\tools\\stock-trading-system\\src\\TradingSystem.Infrastructure\\TradingSystem.Infrastructure.csproj"
+            "D:\\tools\\stock-trading-system\\src\\TradingSystem.Infrastructure\\TradingSystem.Infrastructure.csproj": {
+              "projectPath": "D:\\tools\\stock-trading-system\\src\\TradingSystem.Infrastructure\\TradingSystem.Infrastructure.csproj"
             }
           }
         }
