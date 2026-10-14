@@ -37,6 +37,7 @@ var stagingDir = Path.IsPathRooted(configuredStaging) ? configuredStaging : Path
 
 builder.Services.AddSingleton(new ParquetStorageEngine(storageDir));
 builder.Services.AddSingleton(new WalBufferWriter(stagingDir));
+builder.Services.AddSingleton<VpsSocketFeed>();
 
 // -------------------------------------------------------------------------------------------------
 // 3. ĐĂNG KÝ CÁC KÊNH DỮ LIỆU THỊ TRƯỜNG (MARKET DATA FEEDS)
@@ -47,17 +48,24 @@ builder.Services.AddSingleton(new WalBufferWriter(stagingDir));
 builder.Services.AddHttpClient<VpsDataFeed>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/plain, */*");
+    client.DefaultRequestHeaders.Add("Referer", "https://banggia.vps.com.vn/");
+    client.DefaultRequestHeaders.Add("Origin", "https://banggia.vps.com.vn");
 });
 builder.Services.AddHttpClient<SsiDataFeed>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/plain, */*");
+    client.DefaultRequestHeaders.Add("Referer", "https://iboard.ssi.com.vn/");
 });
 builder.Services.AddHttpClient<DnseDataFeed>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/plain, */*");
+    client.DefaultRequestHeaders.Add("Referer", "https://entrade.com.vn/");
 });
 
 // -------------------------------------------------------------------------------------------------
@@ -78,11 +86,41 @@ builder.Services.AddScoped<DataSyncService>(sp =>
 });
 
 // -------------------------------------------------------------------------------------------------
-// 5. WORKER NỀN (BACKGROUND SERVICE)
-// Đăng ký tiến trình chạy ngầm theo chu kỳ phiên giao dịch (Worker.cs)
+// 5. WORKER NỀN HOẶC LỆNH CHẠY THỦ CÔNG ĐỘC LẬP (CLI COMMANDS)
+// - Mặc định: Chạy Worker ngầm theo phiên (08:30 -> 16:00).
+// - Nếu truyền tham số "sync-eod" (vd: dotnet run -- sync-eod [yyyy-MM-dd]):
+//   -> Kích hoạt chạy bù dữ liệu độc lập ngay lập tức mà không cần đợi Worker.
 // -------------------------------------------------------------------------------------------------
+if (args.Length > 0 && args[0].Equals("sync-eod", StringComparison.OrdinalIgnoreCase))
+{
+    var host = builder.Build();
+    using var scope = host.Services.CreateScope();
+    var syncService = scope.ServiceProvider.GetRequiredService<DataSyncService>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    var prioritySymbols = config.GetSection("CollectorSettings:PrioritySymbols").Get<List<string>>()
+                          ?? new List<string> { "VN30F1M", "HPG", "FPT", "SSI" };
+
+    DateOnly targetDate = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+    if (args.Length > 1 && DateOnly.TryParse(args[1], out var parsedDate))
+    {
+        targetDate = parsedDate;
+    }
+
+    Console.WriteLine($"==========================================================================");
+    Console.WriteLine($"🚀 [CLI ON-DEMAND] KÍCH HOẠT ĐỒNG BỘ BÙ DỮ LIỆU ĐỘC LẬP NGÀY: {targetDate:yyyy-MM-dd}");
+    Console.WriteLine($"• Danh mục cần kéo bù: {prioritySymbols.Count} mã trọng điểm");
+    Console.WriteLine($"==========================================================================\n");
+
+    await syncService.ProcessWalToParquetAsync(targetDate, prioritySymbols);
+    await syncService.SyncHistoricalBarsAsync(prioritySymbols, targetDate);
+
+    Console.WriteLine("\n✨ [HOÀN TẤT] Dữ liệu ngày {0} đã được cập nhật sạch vào Parquet!", targetDate);
+    return;
+}
+
 builder.Services.AddHostedService<Worker>();
 
-// Khởi chạy ứng dụng
-var host = builder.Build();
-await host.RunAsync();
+// Khởi chạy ứng dụng chạy ngầm
+var appHost = builder.Build();
+await appHost.RunAsync();

@@ -1,0 +1,19 @@
+## .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Parquet / Staging / WAL data
+data/staging/
+data/parquet/
+*.wal
+*.parquet
+*.parquet.tmp
+*.parquet.bak
+
+## OS files
+.DS_Store
+Thumbs.db

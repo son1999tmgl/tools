@@ -7,8 +7,8 @@ $serverIp = "168.110.56.11"
 $keyFile = "f:\tools\stock-trading-system\oracle.key"
 
 # 1. Biên dịch code
-Write-Host "[1/3] Đang biên dịch code Release cho Linux x64..." -ForegroundColor Yellow
-dotnet publish "src\TradingSystem.Collector\TradingSystem.Collector.csproj" -c Release -r linux-x64 --self-contained false -o "publish-linux"
+Write-Host "[1/3] Đang biên dịch code Release cho Linux ARM64 (Oracle A1)..." -ForegroundColor Yellow
+dotnet publish "src\TradingSystem.Collector\TradingSystem.Collector.csproj" -c Release -r linux-arm64 --self-contained false -o "publish-linux"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Biên dịch thất bại! Đã hủy cập nhật." -ForegroundColor Red

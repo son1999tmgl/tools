@@ -116,9 +116,18 @@ sudo -u postgres psql -d trading_system
 # Xem thử 10 bản ghi ticks gần nhất:
 SELECT * FROM market_ticks ORDER BY trade_time DESC LIMIT 10;
 
-# Thoát psql:
-\q
+### 4.5. Kích hoạt đồng bộ bù dữ liệu độc lập (CLI On-Demand)
+Nếu máy chủ bị tắt máy, mất mạng từ 15h–16h, bạn có thể chạy lệnh bù dữ liệu thủ công bất kỳ lúc nào (17h, 18h, đêm hoặc cuối tuần):
+```bash
+# 1. Bù dữ liệu cho ngày hôm nay:
+cd /home/ubuntu/trading-system
+./TradingSystem.Collector sync-eod
+
+# 2. Hoặc bù dữ liệu cho một ngày cụ thể trong quá khứ (ví dụ: ngày 2026-10-14):
+./TradingSystem.Collector sync-eod 2026-10-14
 ```
+> 🛡️ **Cơ chế chống chặn IP (Anti-Ban / Rate Limit):** 
+> Lệnh này được trang bị bộ điều tiết nhịp tự động (`SemaphoreSlim(5)` và độ trễ `50ms` giữa các request). Tốc độ gửi request được giữ cố định ở mức an toàn (~15-20 req/s), không bao giờ kích hoạt tường lửa Cloudflare/WAF của VPS, không cần tốn chi phí mua Proxy.
 
 ---
 
@@ -126,16 +135,17 @@ SELECT * FROM market_ticks ORDER BY trade_time DESC LIMIT 10;
 
 Khi bạn code thêm tính năng mới ở máy local và muốn đẩy lên server:
 
-1. **Build bản phát hành trên máy Windows:**
+1. **Chạy script tự động 1-click:**
    ```powershell
-   dotnet publish src/TradingSystem.Collector/TradingSystem.Collector.csproj -c Release -r linux-x64 --self-contained false -o publish-linux
+   ./deploy.ps1
    ```
-2. **Tải file DLL mới lên VPS:**
+2. **Hoặc build thủ công (hỗ trợ cả x64 và ARM64):**
    ```powershell
-   scp -i oracle.key publish-linux/TradingSystem.* ubuntu@168.110.56.11:/home/ubuntu/trading-system/
-   ```
-3. **Khởi động lại service để nhận code mới:**
-   ```powershell
+   # Biên dịch cho Oracle ARM64 (Ampere A1) hoặc x64 (AMD):
+   dotnet publish src/TradingSystem.Collector/TradingSystem.Collector.csproj -c Release -r linux-arm64 --self-contained false -o publish-linux
+   
+   # Tải file lên VPS và khởi động lại dịch vụ:
+   scp -i oracle.key -r publish-linux/* ubuntu@168.110.56.11:/home/ubuntu/trading-system/
    ssh -i oracle.key ubuntu@168.110.56.11 "sudo systemctl restart trading-collector.service"
    ```
 

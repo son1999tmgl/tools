@@ -68,13 +68,18 @@
   * Khi gặp sự cố đột ngột, toàn bộ dữ liệu trước thời điểm crash đã nằm an toàn trên đĩa.
 
 ### 3.2. Chống lag, rớt mạng & bù đắp dữ liệu (Stream + Reconciliation)
-* **Trong phiên (Live Monitor)**:
-  * Cơ chế Heartbeat/Ping phát hiện rớt mạng quá 10 giây.
-  * Tự động thử lại kết nối (Auto-reconnect với Exponential Backoff).
-  * Gọi REST API kéo bù những gói dữ liệu bị hổng trong khoảng thời gian mất mạng.
-* **Sau phiên (Reconciliation cuối ngày - 15h00)**:
-  * Gọi API tải toàn bộ lịch sử khớp lệnh nguyên ngày (Daily Intraday Snapshot) của các mã.
-  * Đối soát với dữ liệu đã hứng được trong phiên. Bù đắp mọi lệnh còn thiếu.
+* **Đầu phiên (08:30 - 08:59) - Gọi REST API 1 lần duy nhất**:
+  * Tải danh mục Master toàn thị trường (2.166 mã từ VPS) và thông số HĐTL Phái sinh, Chứng quyền (từ SSI) lưu vào PostgreSQL.
+  * Tự động đăng ký toàn bộ danh mục đang hoạt động vào kết nối WebSocket.
+* **Trong phiên (09:00 - 11:30 & 13:00 - 14:45) - 100% WEBSOCKET (Zero HTTP Request)**:
+  * Toàn bộ Khớp lệnh Ticks vi mô (ID `3220`), Biến động Sổ lệnh L2 Depth (ID `3210`) và Khối ngoại (ID `3250`) của **tất cả các mã trên thị trường** được máy chủ VPS **tự động PUSH về qua 1 kết nối WebSocket duy nhất**.
+  * **Tuyệt đối không gửi bất kỳ HTTP request polling nào trong phiên**.
+  * Chỉ kích hoạt REST Polling làm "Phao cứu sinh khẩn cấp" nếu socket đứt mạng hoàn toàn.
+* **Sau phiên (Reconciliation & Full Tick Recovery cuối ngày - 15h00) - Gọi REST API 1 lần duy nhất**:
+  * Đọc toàn bộ các tick đã gom trong đệm `staging/*.wal`.
+  * **Tự động kéo bù Tick nguyên ngày**: Gọi trực tiếp endpoint `/getliststocktrade/{symbol}` tải lại toàn bộ lịch sử khớp lệnh từ `09:00:00` đến `14:45:00` của từng mã.
+  * Hợp nhất với dữ liệu thu được trong phiên để bù đắp 100% các tick có thể bị rớt do mạng lag hoặc khởi động lại dịch vụ giữa phiên.
+  * Tiến hành khử trùng lặp và nén ra định dạng chuẩn Apache Parquet vĩnh viễn.
 
 ### 3.3. Dự phòng đa nguồn (Multi-Source Fallback)
 * Cấu hình danh sách nguồn dữ liệu ưu tiên dựa trên kết quả kiểm thử thực tế (09/10/2026):
@@ -84,11 +89,37 @@
   * **Quaternary (Vi mô Tick-by-tick)**: **KBSec Buddy** (Dự phòng thời gian mili-giây).
 * Khi nguồn chính gặp sự cố, hệ thống tự động Failover sang nguồn dự phòng.
 
-### 3.4. Khử trùng lặp dữ liệu (Deduplication & Idempotency)
-* Khi bù dữ liệu từ nhiều nguồn hoặc re-fetch sau khi rớt mạng, một số lệnh có thể bị trùng.
-* Hệ thống định danh mỗi giao dịch theo khóa tự nhiên:
-  $$\text{Key} = (\text{Symbol}, \text{Timestamp}, \text{Price}, \text{Volume}, \text{Side})$$
-* Trước khi đóng gói nén ra file Parquet chính thức cuối ngày, tiến trình Deduplication sẽ loại bỏ 100% các bản ghi trùng lặp và sắp xếp theo trình tự thời gian tăng dần.
+### 3.4. Khử trùng lặp dữ liệu & An toàn sao lưu (Deduplication & Safe Atomic Storage)
+* **Khóa khử trùng lặp đa thuộc tính (Composite Natural Key)**:
+  Khi hợp nhất dữ liệu từ WAL và kéo bù từ API, các lệnh trùng lặp sẽ được lọc tuyệt đối bằng khóa:
+  $$\text{Key} = (\text{Symbol}, \text{Timestamp}, \text{Price}, \text{Volume}, \text{Side}, \mathbf{AccumulatedVolume})$$
+  * **Tại sao cần $\mathbf{AccumulatedVolume}$?** Trong cùng 1 giây, một mã có thể có 5–10 lệnh khớp cùng mức giá và khối lượng (ví dụ cùng 1.000 cổ giá 20.45). Nếu chỉ dùng Timestamp và Volume thì các lệnh này sẽ bị xóa nhầm! Nhờ có `AccumulatedVolume` (khối lượng lũy kế tăng dần sau mỗi lệnh khớp), hệ thống **phân biệt chính xác từng giao dịch riêng biệt mà không bao giờ bị xóa nhầm dữ liệu thật**.
+* **Cơ chế ghi file an toàn chống sập nguồn (Atomic Write & .bak Backup)**:
+  - Khi xuất dữ liệu ra Parquet, file được ghi tạm vào `.parquet.tmp`.
+  - Nếu file đích đã có sẵn từ trước, hệ thống tự động copy sao lưu sang `.parquet.bak` trước khi thực hiện ghi đè nguyên tử (`Atomic File.Move`).
+  - Nếu server bị mất điện hoặc crash giữa chừng trong lúc ghi đĩa, file Parquet cũ vẫn nguyên vẹn 100%, không bao giờ bị tình trạng file hỏng (Corrupted file).
+
+* **Chống trùng lặp khi ghi vào Database PostgreSQL (Idempotent Upsert)**:
+  - Các bảng `symbols`, `derivative_contracts`, `covered_warrants` đều được kiểm tra mã tồn tại (`HashSet`) trước khi chèn, hoặc sử dụng khóa chính tự nhiên `SymbolCode` kết hợp `TradingDate` cho bảng nến `market_daily_bars`. Không bao giờ bị lỗi trùng khóa (Duplicate Key Exception).
+
+### 3.5. Cơ chế Phòng thủ Chống Chặn IP & Kênh WebSocket Realtime (Push-Based Feed)
+Để duy trì bot hoạt động 24/7 trên Oracle Cloud mà không bao giờ bị WAF/Cloudflare của VPS/DNSE khóa IP:
+1. **Chuyển đổi sang WebSocket trực tiếp (Push-based Socket.IO Stream) - Bao quát TOÀN THỊ TRƯỜNG**:
+   - Thay vì Polling HTTP liên tục gửi hàng nghìn request, hệ thống duy trì **duy nhất 1 kết nối TCP WebSocket** qua `wss://bgdatafeed.vps.com.vn/socket.io/?EIO=4&transport=websocket`.
+   - Sử dụng lệnh `regs` đăng ký nhận luồng cho **TOÀN BỘ 1.890+ mã đang giao dịch** (toàn bộ Cổ phiếu HOSE, HNX, UPCOM, Chứng quyền CW và Phái sinh VN30F). Gói tin đăng ký chỉ nặng ~9.5 KB!
+   - Máy chủ VPS tự động đẩy (push) từng lệnh khớp về ngay lập tức với **độ trễ 0ms (Zero Polling)**, không sinh ra bất kỳ request HTTP polling nào trong phiên, **triệt tiêu 100% rủi ro bị chặn IP**.
+2. **Kiến trúc Hybrid Linh Hoạt (WebSocket toàn thị trường + REST Fallback)**:
+   - WebSocket là luồng chính nhận tick thời gian thực cho toàn bộ thị trường.
+   - Nếu đường truyền socket rớt hoặc bảo trì, hệ thống tự động kích hoạt chế độ dự phòng REST Polling kèm Auto-Reconnect sau mỗi 5 giây.
+3. **Giả lập danh tính trình duyệt thật (Browser Fingerprinting & Headers)**:
+   - Gửi đầy đủ `User-Agent` Chrome mới nhất, kèm các header chuẩn CORS: `Referer` (`https://banggia.vps.com.vn/`), `Origin`, `Accept`.
+4. **Kiểm soát thông lượng và hàng đợi đồng thời (Concurrency Throttling)**:
+   - Giới hạn `SemaphoreSlim(5)` và đệm trễ `50ms` giữa các request khi kéo bù dữ liệu cuối ngày.
+   - Giữ tốc độ ổn định ở mức an toàn **~15–20 req/s** (tương đương 1 người dùng đang mở 2 tab bảng điện).
+5. **Cơ chế Backoff tự động khi gặp cảnh báo (Exponential Backoff & Circuit Breaker)**:
+   - Bắt mã lỗi `HTTP 429 (Too Many Requests)` hoặc `HTTP 503`. Tự động ngắt nhịp và ngủ đông 5 – 10 giây trước khi thử lại.
+6. **Tiết kiệm tài nguyên thông minh ngoài giờ (Smart Idle)**:
+   - Vào ban đêm, giờ nghỉ trưa hoặc Thứ 7, Chủ Nhật khi sàn đóng cửa, bot tự động hạ tần suất lặp xuống 30–60 giây/lần để không tạo request rác lên server.
 
 ---
 

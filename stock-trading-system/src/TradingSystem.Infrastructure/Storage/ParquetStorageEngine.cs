@@ -28,12 +28,27 @@ public class ParquetStorageEngine
         Directory.CreateDirectory(dir);
         var filePath = Path.Combine(dir, $"{symbol}.parquet");
 
-        using var fileStream = File.Create(filePath);
-        await ParquetSerializer.SerializeAsync(bars, fileStream);
+        var tempPath = filePath + ".tmp";
+        var backupPath = filePath + ".bak";
+
+        // Ghi vào file tạm trước
+        using (var fileStream = File.Create(tempPath))
+        {
+            await ParquetSerializer.SerializeAsync(bars, fileStream);
+        }
+
+        // Nếu file đích đã có sẵn, sao lưu sang .bak trước khi ghi đè
+        if (File.Exists(filePath))
+        {
+            File.Copy(filePath, backupPath, true);
+        }
+
+        File.Move(tempPath, filePath, true);
     }
 
     /// <summary>
     /// Ghi danh sách Khớp lệnh Tick ra file Parquet: data/ticks/{YYYY-MM-DD}/{symbol}.parquet
+    /// Hỗ trợ cơ chế Atomic Write (.tmp) và sao lưu an toàn (.bak) chống lỗi hỏng file
     /// </summary>
     public async Task WriteTicksAsync(string symbol, DateOnly date, IList<MarketTick> ticks)
     {
@@ -42,9 +57,22 @@ public class ParquetStorageEngine
         var dir = Path.Combine(_baseStorageDir, "ticks", date.ToString("yyyy-MM-dd"));
         Directory.CreateDirectory(dir);
         var filePath = Path.Combine(dir, $"{symbol}.parquet");
+        var tempPath = filePath + ".tmp";
+        var backupPath = filePath + ".bak";
 
-        using var fileStream = File.Create(filePath);
-        await ParquetSerializer.SerializeAsync(ticks, fileStream);
+        // Ghi vào file tạm trước
+        using (var fileStream = File.Create(tempPath))
+        {
+            await ParquetSerializer.SerializeAsync(ticks, fileStream);
+        }
+
+        // Nếu file đích đã có sẵn, sao lưu sang .bak trước khi ghi đè
+        if (File.Exists(filePath))
+        {
+            File.Copy(filePath, backupPath, true);
+        }
+
+        File.Move(tempPath, filePath, true);
     }
 
     /// <summary>

@@ -26,6 +26,7 @@ public class Worker : BackgroundService
     private readonly IConfiguration _config;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly VpsDataFeed _vpsFeed;
+    private readonly VpsSocketFeed _vpsSocketFeed;
     private readonly SsiDataFeed _ssiFeed;
     private readonly DnseDataFeed _dnseFeed;
     private readonly WalBufferWriter _walWriter;
@@ -43,6 +44,7 @@ public class Worker : BackgroundService
         IConfiguration config,
         IServiceScopeFactory scopeFactory,
         VpsDataFeed vpsFeed,
+        VpsSocketFeed vpsSocketFeed,
         SsiDataFeed ssiFeed,
         DnseDataFeed dnseFeed,
         WalBufferWriter walWriter,
@@ -52,16 +54,17 @@ public class Worker : BackgroundService
         _config = config;
         _scopeFactory = scopeFactory;
         _vpsFeed = vpsFeed;
+        _vpsSocketFeed = vpsSocketFeed;
         _ssiFeed = ssiFeed;
         _dnseFeed = dnseFeed;
         _walWriter = walWriter;
         _parquetEngine = parquetEngine;
 
         _prioritySymbols = _config.GetSection("CollectorSettings:PrioritySymbols").Get<List<string>>() 
-                           ?? new List<string> { "VN30F1M", "41I1GA000", "HPG", "FPT", "SSI" };
+                           ?? new List<string> { "VN30F1M", "HPG", "FPT", "SSI" };
         _runOnceImmediate = _config.GetValue<bool>("CollectorSettings:RunOnceImmediate", true);
         _pollIntervalSec = _config.GetValue<int>("CollectorSettings:PollIntervalSeconds", 3);
-        _collectAllSymbols = _config.GetValue<bool>("CollectorSettings:CollectAllSymbols", true);
+        _collectAllSymbols = _config.GetValue<bool>("CollectorSettings:CollectAllSymbolsBookSnapshot", true);
         _maxDegreeOfParallelism = _config.GetValue<int>("CollectorSettings:MaxDegreeOfParallelism", 10);
     }
 
@@ -81,6 +84,16 @@ public class Worker : BackgroundService
         _logger.LogInformation("• Thời gian máy chủ: {Time}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         _logger.LogInformation("• Các mã theo dõi chính: {Symbols}", string.Join(", ", _prioritySymbols));
         _logger.LogInformation("==========================================================================\n");
+
+        // 0. Bật kết nối luồng WebSocket hứng dữ liệu tức thời (Zero Polling - Chống chặn IP)
+        try
+        {
+            await _vpsSocketFeed.StartAsync(_prioritySymbols, stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Không thể khởi động WebSocket ngay lập tức: {Msg}. (Sẽ dùng REST fallback)", ex.Message);
+        }
 
         // 1. Chạy chế độ kiểm thử nhanh ngay khi bật (nếu được cấu hình)
         if (_runOnceImmediate)
@@ -130,8 +143,18 @@ public class Worker : BackgroundService
                     }
                 }
 
-                // Nghỉ theo chu kỳ
-                await Task.Delay(TimeSpan.FromSeconds(_pollIntervalSec), stoppingToken);
+                // Điều tiết nhịp nghỉ thông minh:
+                // - Trong phiên giao dịch (Thứ 2 - Thứ 6): Nghỉ theo chu kỳ cấu hình (3-5s).
+                // - Ngoài phiên giao dịch / Buổi tối / Thứ 7, Chủ Nhật: Nghỉ 30 giây để không spam tài nguyên CPU và không tốn request.
+                bool isWeekday = vnTime.DayOfWeek != DayOfWeek.Saturday && vnTime.DayOfWeek != DayOfWeek.Sunday;
+                if (isWeekday && (isMorningSession || isAfternoonSession))
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(_pollIntervalSec), stoppingToken);
+                }
+                else
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -140,7 +163,7 @@ public class Worker : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi trong vòng lặp chính của Worker: {Message}", ex.Message);
-                await Task.Delay(5000, stoppingToken);
+                await Task.Delay(10000, stoppingToken);
             }
         }
 
@@ -195,7 +218,7 @@ public class Worker : BackgroundService
         using (var scope = _scopeFactory.CreateScope())
         {
             var syncService = scope.ServiceProvider.GetRequiredService<DataSyncService>();
-            await syncService.ProcessWalToParquetAsync(today, ct);
+            await syncService.ProcessWalToParquetAsync(today, _prioritySymbols.Take(3), ct);
         }
 
         _logger.LogInformation("✨ [DEMO VALIDATION] Chu trình kiểm thử mẫu hoàn tất thành công 100%!\n");
@@ -223,6 +246,9 @@ public class Worker : BackgroundService
                                                .Distinct()
                                                .ToList();
                 _logger.LogInformation("📋 [ACTIVE UNIVERSE] Đã nạp {Count} mã Cổ phiếu, CW & Phái sinh đang hoạt động sẵn sàng thu thập realtime!", _activeTradingSymbols.Count);
+
+                // Tự động mở rộng luồng WebSocket lắng nghe TOÀN BỘ thị trường (Zero HTTP Polling)
+                await _vpsSocketFeed.SubscribeSymbolsAsync(_activeTradingSymbols);
             }
         }
         catch (Exception ex)
@@ -233,24 +259,28 @@ public class Worker : BackgroundService
 
     /// <summary>
     /// HÀM THU THẬP TRONG PHIÊN (INTRADAY - 09:00-11:30 & 13:00-14:45):
-    /// - Hỗ trợ thu thập TOÀN BỘ thị trường (Cổ phiếu, Chứng quyền, Phái sinh).
-    /// - Chạy đa luồng song song (Parallel.ForEachAsync) với kiểm soát giới hạn tài nguyên (MaxDegreeOfParallelism).
-    /// - Đẩy lập tức vào hàng đợi đệm WAL phi khóa (_walWriter.TryEnqueue) với độ trễ siêu thấp.
+    /// - 100% dữ liệu Ticks và Sổ lệnh L2 trong phiên được hứng tự động qua luồng WEBSOCKET (Zero HTTP Request).
+    /// - Không gửi bất kỳ HTTP request polling nào lên sàn trong suốt phiên giao dịch.
+    /// - CHỈ KÍCH HOẠT REST API dự phòng khi WebSocket bị đứt mạng hoặc bảo trì (Fallback mode).
     /// </summary>
     private async Task CollectIntradayTicksAsync(CancellationToken ct)
     {
-        // Danh sách mục tiêu: toàn bộ thị trường hoặc danh sách ưu tiên
-        var targetSymbols = (_collectAllSymbols && _activeTradingSymbols.Count > 0)
-            ? _activeTradingSymbols
-            : _prioritySymbols;
+        // Kiểm tra sức khỏe kết nối WebSocket
+        if (_vpsSocketFeed.IsConnected)
+        {
+            // WebSocket đang nhận luồng dữ liệu trơn tru 24/7 -> KHÔNG GỬI BẤT KỲ REQUEST API NÀO!
+            return;
+        }
 
+        // CHẾ ĐỘ DỰ PHÒNG KHẨN CẤP (FALLBACK): Khi WebSocket rớt mạng
+        _logger.LogWarning("⚠️ [FALLBACK] WebSocket tạm thời gián đoạn. Kích hoạt quét REST polling dự phòng...");
         var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Math.Max(1, _maxDegreeOfParallelism),
             CancellationToken = ct
         };
 
-        await Parallel.ForEachAsync(targetSymbols, parallelOptions, async (symbol, token) =>
+        await Parallel.ForEachAsync(_prioritySymbols, parallelOptions, async (symbol, token) =>
         {
             try
             {
@@ -262,6 +292,11 @@ public class Worker : BackgroundService
                         _walWriter.TryEnqueue(t);
                     }
                 }
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                _logger.LogWarning("⚠️ VPS cảnh báo Rate Limit (HTTP 429) cho mã {Sym}. Tạm nghỉ 5s...", symbol);
+                await Task.Delay(5000, token);
             }
             catch
             {
@@ -282,8 +317,8 @@ public class Worker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var syncService = scope.ServiceProvider.GetRequiredService<DataSyncService>();
 
-        // 1. Chốt nén toàn bộ WAL của ngày ra Parquet
-        await syncService.ProcessWalToParquetAsync(date, ct);
+        // 1. Chốt nén toàn bộ WAL của ngày ra Parquet và kéo bù toàn bộ danh mục 101 mã trọng điểm
+        await syncService.ProcessWalToParquetAsync(date, _prioritySymbols, ct);
 
         // 2. Kéo nến ngày và nến 1m từ DNSE để đối soát bù dữ liệu
         await syncService.SyncHistoricalBarsAsync(_prioritySymbols, date, ct);
