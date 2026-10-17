@@ -155,6 +155,16 @@ async def main():
     print("\nĐang kết nối tài khoản Telegram...")
     phone_to_use = PHONE.strip() if PHONE and PHONE.strip() else None
     if phone_to_use:
+        # Chuẩn hóa nếu bắt đầu bằng 0 -> chuyển sang mã quốc gia +84
+        clean_p = phone_to_use.replace(" ", "").replace("-", "")
+        if clean_p.startswith("0") and len(clean_p) >= 10:
+            phone_to_use = "+84" + clean_p[1:]
+        elif not clean_p.startswith("+") and clean_p.startswith("84"):
+            phone_to_use = "+" + clean_p
+        else:
+            phone_to_use = clean_p
+
+        print(f"[*] Sử dụng số điện thoại: {phone_to_use}")
         await client.start(phone=phone_to_use)
     else:
         await client.start()
