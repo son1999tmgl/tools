@@ -1,57 +1,44 @@
 import os
 import sys
-import re
+import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from excel_handler import ExcelHandler
+from ai_extractor import AIExtractor
 
-# Tải cấu hình từ .env
 load_dotenv()
 
 API_ID = os.getenv("TELEGRAM_API_ID")
 API_HASH = os.getenv("TELEGRAM_API_HASH")
 PHONE = os.getenv("TELEGRAM_PHONE")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-EXCEL_PATH = os.getenv("EXCEL_PATH", "data.xlsx")
-EXCEL_SHEET_NAME = os.getenv("EXCEL_SHEET_NAME", "Messages")
+EXCEL_PATH = os.getenv("EXCEL_PATH", "account_sales.xlsx")
+EXCEL_SHEET_NAME = os.getenv("EXCEL_SHEET_NAME", "AccountSales")
 
-# Danh sách từ khóa (tách bằng dấu phẩy)
-raw_keywords = os.getenv("KEYWORDS", "")
-KEYWORDS = [k.strip().lower() for k in raw_keywords.split(",") if k.strip()]
-
-# Danh sách nhóm cần theo dõi (ID hoặc username, tách bằng dấu phẩy)
+# Nhóm cần quét (để trống để quét tất cả các nhóm tham gia)
 raw_targets = os.getenv("TARGET_GROUPS", "")
 TARGET_GROUPS = [t.strip() for t in raw_targets.split(",") if t.strip()]
 
 def validate_config():
     if not API_ID or not API_HASH:
-        print("=" * 60)
-        print("LỖI CẤU HÌNH: Chưa cấu hình TELEGRAM_API_ID hoặc TELEGRAM_API_HASH!")
-        print("1. Hãy sao chép .env.example thành .env")
-        print("2. Lấy API_ID và API_HASH từ https://my.telegram.org")
-        print("3. Điền vào file .env rồi chạy lại.")
-        print("=" * 60)
+        print("[LỖI] Thiếu TELEGRAM_API_ID hoặc TELEGRAM_API_HASH trong file .env!")
+        sys.exit(1)
+    if not GEMINI_API_KEY:
+        print("=" * 65)
+        print("[LƯU Ý QUAN TRỌNG] Chưa cấu hình GEMINI_API_KEY trong file .env!")
+        print("Để AI có thể tự động hiểu tiếng lóng, nhận diện tin bán acc và bóc giá:")
+        print("1. Vào https://aistudio.google.com/apikey để lấy API Key miễn phí.")
+        print("2. Thêm vào file .env dòng: GEMINI_API_KEY=AIzaSy...")
+        print("=" * 65)
         sys.exit(1)
 
-def check_keyword_match(text: str):
-    """Kiểm tra tin nhắn có chứa từ khóa nào trong danh sách lọc không."""
-    if not KEYWORDS:
-        return True, "Tất cả (Không lọc)"
-    
-    text_lower = text.lower()
-    for kw in KEYWORDS:
-        # Tìm kiếm theo từ khóa hoặc cụm từ
-        if kw in text_lower:
-            return True, kw
-    return False, ""
-
 def build_message_link(chat, message_id: int) -> str:
-    """Tạo đường dẫn trực tiếp tới tin nhắn Telegram."""
+    """Tạo link dẫn đến tin nhắn."""
     if getattr(chat, 'username', None):
         return f"https://t.me/{chat.username}/{message_id}"
     elif getattr(chat, 'id', None):
-        # Với nhóm kín (supergroup), ID dạng -100xxxxxxxxxx -> link là /c/xxxxxxxxxx
         chat_id_str = str(chat.id)
         if chat_id_str.startswith("-100"):
             clean_id = chat_id_str[4:]
@@ -61,20 +48,22 @@ def build_message_link(chat, message_id: int) -> str:
 async def main():
     validate_config()
 
-    print("\n--- KHỞI ĐỘNG TELEGRAM EXCEL COLLECTOR ---")
-    print(f"[Cấu hình] File Excel: {EXCEL_PATH} (Sheet: {EXCEL_SHEET_NAME})")
-    print(f"[Cấu hình] Từ khóa lọc ({len(KEYWORDS)}): {KEYWORDS if KEYWORDS else 'Lấy tất cả'}")
-    print(f"[Cấu hình] Nhóm theo dõi ({len(TARGET_GROUPS)}): {TARGET_GROUPS if TARGET_GROUPS else 'Tất cả các nhóm bạn tham gia'}")
+    print("\n" + "=" * 60)
+    print("      TELEGRAM AI ACCOUNT COLLECTOR (SMART AGENT)      ")
+    print("=" * 60)
+    print(f"[*] File Excel đích: {EXCEL_PATH} (Sheet: {EXCEL_SHEET_NAME})")
+    print(f"[*] Giám sát nhóm: {TARGET_GROUPS if TARGET_GROUPS else 'Tất cả các nhóm bạn tham gia'}")
+    print("[*] Đang khởi tạo mô hình AI Gemini Flash...")
 
+    ai = AIExtractor(api_key=GEMINI_API_KEY)
     excel = ExcelHandler(file_path=EXCEL_PATH, sheet_name=EXCEL_SHEET_NAME)
 
-    # Khởi tạo client Telethon với session name là 'telegram_collector'
     client = TelegramClient("telegram_collector", int(API_ID), API_HASH)
 
     @client.on(events.NewMessage)
-    async def handler(event):
+    async def message_handler(event):
         try:
-            # Chỉ xử lý tin nhắn trong Group hoặc Channel
+            # Chỉ nhận tin nhắn trong Group hoặc Channel
             if not (event.is_group or event.is_channel):
                 return
 
@@ -83,7 +72,7 @@ async def main():
             chat_id = str(chat.id)
             chat_username = getattr(chat, 'username', '')
 
-            # Lọc theo danh sách nhóm nếu có chỉ định
+            # Lọc theo danh sách nhóm nếu có
             if TARGET_GROUPS:
                 matched_target = False
                 for target in TARGET_GROUPS:
@@ -96,16 +85,17 @@ async def main():
                 if not matched_target:
                     return
 
-            message_text = event.raw_text or ""
-            if not message_text.strip():
+            text = event.raw_text or ""
+            if len(text.strip()) < 5:
                 return
 
-            # Kiểm tra từ khóa
-            is_matched, matched_kw = check_keyword_match(message_text)
-            if not is_matched:
+            # Gọi AI phân tích ngữ nghĩa tin nhắn
+            analysis = ai.analyze_message(text)
+            if not analysis or not analysis.is_selling_account:
+                # Bỏ qua tin nhắn không phải rao bán tài khoản
                 return
 
-            # Thông tin người gửi
+            # Lấy thông tin người bán
             sender = await event.get_sender()
             sender_name = ""
             sender_username = ""
@@ -113,37 +103,57 @@ async def main():
                 first = getattr(sender, 'first_name', '') or ''
                 last = getattr(sender, 'last_name', '') or ''
                 sender_name = f"{first} {last}".strip()
-                sender_username = getattr(sender, 'username', '') or ''
+                if getattr(sender, 'username', None):
+                    sender_username = f"@{sender.username}"
 
+            contact = analysis.contact_info if analysis.contact_info else sender_username
             msg_link = build_message_link(chat, event.message.id)
             msg_date = event.message.date.astimezone() if event.message.date else datetime.now()
 
-            print(f"\n[PHÁT HIỆN TIN PHÙ HỢP] Nhóm: '{chat_title}' | Khớp từ khóa: [{matched_kw}] | Người gửi: {sender_name}")
-            
-            # Ghi vào file Excel
-            excel.append_message(
-                group_name=chat_title,
-                group_id=chat_id,
-                sender_name=sender_name,
-                username=sender_username,
-                matched_keyword=matched_kw,
-                text=message_text,
-                message_link=msg_link,
-                timestamp=msg_date
-            )
+            print(f"\n[PHÁT HIỆN TIN BÁN TÀI KHOẢN] Nhóm: '{chat_title}' | Người đăng: {sender_name} ({sender_username})")
+
+            # Nếu có danh sách từng tài khoản cụ thể
+            if analysis.offers:
+                for offer in analysis.offers:
+                    print(f"  + Acc: {offer.account_type} | Gói: {offer.duration_or_plan} | Giá: {offer.price} | Note: {offer.warranty_or_notes}")
+                    excel.append_account_offer(
+                        account_type=offer.account_type,
+                        plan=offer.duration_or_plan,
+                        price=offer.price,
+                        warranty=offer.warranty_or_notes,
+                        seller_name=sender_name,
+                        contact_info=contact,
+                        group_name=chat_title,
+                        message_link=msg_link,
+                        original_text=text,
+                        timestamp=msg_date
+                    )
+            else:
+                # Trường hợp nhận diện là tin bán nhưng không chia rõ từng item
+                excel.append_account_offer(
+                    account_type="Tài khoản khác",
+                    plan="",
+                    price="Thương lượng",
+                    warranty="",
+                    seller_name=sender_name,
+                    contact_info=contact,
+                    group_name=chat_title,
+                    message_link=msg_link,
+                    original_text=text,
+                    timestamp=msg_date
+                )
 
         except Exception as e:
-            print(f"[LỖI Xử lý tin nhắn] {e}")
+            print(f"[Lỗi xử lý tin nhắn] {e}")
 
-    print("\nĐang kết nối tới Telegram...")
+    print("\nĐang kết nối tài khoản Telegram...")
     await client.start(phone=PHONE)
-    print(">> Đã kết nối thành công! Đang lắng nghe tin nhắn mới...")
-    print(">> Nhấn Ctrl+C để dừng chương trình.\n")
-    
+    print(">> ĐÃ KẾT NỐI VÀ BẬT AI THÀNH CÔNG!")
+    print(">> Đang trực chờ tin nhắn mới... (Nhấn Ctrl+C để dừng)\n")
+
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    import asyncio
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

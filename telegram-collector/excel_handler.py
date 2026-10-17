@@ -5,17 +5,19 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 DEFAULT_HEADERS = [
     "Thời gian",
-    "Tên nhóm / Kênh",
-    "ID Nhóm",
-    "Người gửi",
-    "Username",
-    "Từ khóa khớp",
-    "Nội dung",
-    "Link tin nhắn"
+    "Loại tài khoản",
+    "Gói / Thời hạn",
+    "Giá bán (VNĐ)",
+    "Bảo hành / Ghi chú",
+    "Người bán",
+    "Username / Liên hệ",
+    "Tên nhóm",
+    "Link tin nhắn",
+    "Nội dung gốc"
 ]
 
 class ExcelHandler:
-    def __init__(self, file_path: str = "data.xlsx", sheet_name: str = "Messages"):
+    def __init__(self, file_path: str = "data.xlsx", sheet_name: str = "AccountSales"):
         self.file_path = file_path
         self.sheet_name = sheet_name
         self._ensure_file_exists()
@@ -37,39 +39,44 @@ class ExcelHandler:
                 cell.fill = header_fill
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
-            # Độ rộng cột mặc định
+            # Độ rộng cột
             col_widths = {
                 "A": 20, # Thời gian
-                "B": 25, # Tên nhóm
-                "C": 16, # ID Nhóm
-                "D": 22, # Người gửi
-                "E": 18, # Username
-                "F": 18, # Từ khóa khớp
-                "G": 50, # Nội dung
-                "H": 35  # Link tin nhắn
+                "B": 22, # Loại tài khoản
+                "C": 18, # Gói / Thời hạn
+                "D": 18, # Giá bán (VNĐ)
+                "E": 28, # Bảo hành / Ghi chú
+                "F": 20, # Người bán
+                "G": 22, # Username / Liên hệ
+                "H": 25, # Tên nhóm
+                "I": 35, # Link tin nhắn
+                "J": 45  # Nội dung gốc
             }
             for col, width in col_widths.items():
                 ws.column_dimensions[col].width = width
 
             wb.save(self.file_path)
-            print(f"[ExcelHandler] Đã tạo file Excel mẫu: {self.file_path}")
+            print(f"[ExcelHandler] Đã khởi tạo file Excel: {self.file_path}")
 
-    def append_message(self, group_name: str, group_id: str, sender_name: str,
-                       username: str, matched_keyword: str, text: str,
-                       message_link: str, timestamp: datetime = None) -> bool:
-        """Ghi thêm một dòng tin nhắn vào file Excel."""
+    def append_account_offer(self, account_type: str, plan: str, price: str,
+                             warranty: str, seller_name: str, contact_info: str,
+                             group_name: str, message_link: str, original_text: str,
+                             timestamp: datetime = None) -> bool:
+        """Ghi thêm một bản ghi bán tài khoản vào file Excel."""
         if timestamp is None:
             timestamp = datetime.now()
 
         row_data = [
             timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            account_type or "Chưa rõ",
+            plan or "",
+            price or "Thương lượng",
+            warranty or "",
+            seller_name or "",
+            contact_info or "",
             group_name or "",
-            str(group_id),
-            sender_name or "",
-            f"@{username}" if username else "",
-            matched_keyword or "",
-            text or "",
-            message_link or ""
+            message_link or "",
+            original_text or ""
         ]
 
         try:
@@ -82,17 +89,17 @@ class ExcelHandler:
 
             ws.append(row_data)
 
-            # Căn lề cho dòng mới
+            # Căn lề
             current_row = ws.max_row
             ws.cell(row=current_row, column=1).alignment = Alignment(horizontal="center")
             ws.cell(row=current_row, column=3).alignment = Alignment(horizontal="center")
-            ws.cell(row=current_row, column=6).alignment = Alignment(horizontal="center")
+            ws.cell(row=current_row, column=4).alignment = Alignment(horizontal="center")
 
             wb.save(self.file_path)
-            print(f"[ExcelHandler] +1 dòng đã thêm: [{group_name}] - {matched_keyword}")
+            print(f"  -> [Excel] +1 Dòng: [{account_type}] - {price} ({seller_name})")
             return True
         except PermissionError:
-            print(f"[CẢNH BÁO] Không thể lưu file Excel '{self.file_path}' do file đang được mở trong ứng dụng khác (Excel). Hãy đóng file lại để lưu dữ liệu!")
+            print(f"[CẢNH BÁO] Không thể lưu file '{self.file_path}' vì file đang mở trong ứng dụng khác. Hãy đóng file để cập nhật!")
             return False
         except Exception as e:
             print(f"[LỖI Excel] {e}")

@@ -1,3 +1,5 @@
 telethon>=1.36.0
 openpyxl>=3.1.2
 python-dotenv>=1.0.1
+google-genai>=2.30.0
+pydantic>=2.10.0
