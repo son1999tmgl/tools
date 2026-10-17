@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font, PatternFill, Alignment, numbers
+from openpyxl.styles import Font, PatternFill, Alignment
 
 DEFAULT_HEADERS = [
     "Thời gian cập nhật",   # Col 1 (A)
@@ -58,7 +58,6 @@ class ExcelHandler:
                 "I": 22, # Username / Liên hệ
                 "J": 25, # Tên nhóm
                 "K": 35, # Link tin nhắn
-                "J": 25,
                 "L": 50  # Nội dung gốc
             }
             for col, width in col_widths.items():
@@ -74,9 +73,10 @@ class ExcelHandler:
                              timestamp: datetime = None) -> str:
         """
         Ghi hoặc cập nhật bản ghi vào file Excel:
-        - Nếu trùng (loại tài khoản; gói/thời hạn; người bán; tên nhóm) -> cập nhật lại dòng cũ.
-          (Cột nào có dữ liệu mới thì cập nhật, cột nào trống thì giữ nguyên dữ liệu cũ).
-        - Nếu chưa có -> thêm dòng mới.
+        - Dữ liệu luôn được chèn vào ĐẦU FILE (Dòng 2 - ngay dưới tiêu đề), đẩy các dòng cũ dần xuống dưới.
+        - Kiểm tra ĐIỀU KIỆN VÀ (AND): (loại tài khoản == cur_acc VÀ gói/thời hạn == cur_plan VÀ người bán == cur_seller VÀ tên nhóm == cur_group):
+          + Nếu trùng: Cập nhật dữ liệu (cột có tin mới thì đè, cột thiếu thì giữ cũ) và đưa dòng đó lên đầu bảng.
+          + Nếu chưa có: Chèn dòng mới vào đầu bảng (dòng 2), đẩy dữ liệu cũ xuống.
         """
         if timestamp is None:
             timestamp = datetime.now()
@@ -91,11 +91,7 @@ class ExcelHandler:
                 ws = wb.create_sheet(self.sheet_name)
                 ws.append(DEFAULT_HEADERS)
 
-            # Tìm kiếm dòng cũ thỏa mãn: (Loại tài khoản, Gói/thời hạn, Người bán, Tên nhóm)
-            # Col 3 (C): Loại tài khoản
-            # Col 4 (D): Gói / Thời hạn
-            # Col 8 (H): Người bán
-            # Col 10 (J): Tên nhóm
+            # Tìm dòng cũ thỏa mãn đồng thời cả 4 điều kiện
             target_row_idx = None
             for row_idx in range(2, ws.max_row + 1):
                 cur_acc_type = _norm(ws.cell(row=row_idx, column=3).value)
@@ -111,87 +107,80 @@ class ExcelHandler:
                     break
 
             if target_row_idx is not None:
-                # --- CẬP NHẬT DÒNG CŨ (UPDATE) ---
-                # 1. Thời gian cập nhật: luôn cập nhật mới nhất
-                ws.cell(row=target_row_idx, column=1, value=formatted_time)
+                # --- ĐÃ TỒN TẠI: LẤY DỮ LIỆU CŨ NẾU CỘT MỚI BỊ TRỐNG ---
+                old_platform = ws.cell(row=target_row_idx, column=2).value
+                old_acc_type = ws.cell(row=target_row_idx, column=3).value
+                old_plan     = ws.cell(row=target_row_idx, column=4).value
+                old_price_vnd = ws.cell(row=target_row_idx, column=5).value
+                old_price_raw = ws.cell(row=target_row_idx, column=6).value
+                old_warranty  = ws.cell(row=target_row_idx, column=7).value
+                old_seller    = ws.cell(row=target_row_idx, column=8).value
+                old_contact   = ws.cell(row=target_row_idx, column=9).value
+                old_group     = ws.cell(row=target_row_idx, column=10).value
 
-                # 2. Tên TK bán (Platform): nếu có mới thì cập nhật
-                if platform:
-                    ws.cell(row=target_row_idx, column=2, value=platform)
-
-                # 3. Loại tài khoản: cập nhật nếu có
-                if account_type:
-                    ws.cell(row=target_row_idx, column=3, value=account_type)
-
-                # 4. Gói / thời hạn: cập nhật nếu có
-                if plan:
-                    ws.cell(row=target_row_idx, column=4, value=plan)
-
-                # 5. Giá bán VNĐ (Col E):
+                final_platform = platform if platform else old_platform
+                final_acc_type = account_type if account_type else old_acc_type
+                final_plan     = plan if plan else old_plan
+                
+                # Giá bán VNĐ
                 if price_vnd is not None and price_vnd > 0:
-                    cell_price = ws.cell(row=target_row_idx, column=5, value=price_vnd)
-                    cell_price.number_format = '#,##0 "₫"'
-                elif not ws.cell(row=target_row_idx, column=5).value:
-                    ws.cell(row=target_row_idx, column=5, value="Thương lượng")
-
-                # 6. Giá gốc / Mô tả (Col F):
-                if price_raw:
-                    ws.cell(row=target_row_idx, column=6, value=price_raw)
-
-                # 7. Bảo hành / Ghi chú (Col G):
-                if warranty:
-                    ws.cell(row=target_row_idx, column=7, value=warranty)
-
-                # 8. Người bán: giữ/cập nhật
-                if seller_name:
-                    ws.cell(row=target_row_idx, column=8, value=seller_name)
-
-                # 9. Username / Liên hệ (Col I):
-                if contact_info:
-                    ws.cell(row=target_row_idx, column=9, value=contact_info)
-
-                # 10. Tên nhóm: giữ
-                if group_name:
-                    ws.cell(row=target_row_idx, column=10, value=group_name)
-
-                # 11. Link tin nhắn: luôn cập nhật link mới nhất
-                if message_link:
-                    ws.cell(row=target_row_idx, column=11, value=message_link)
-
-                # 12. Nội dung gốc: luôn cập nhật tin mới nhất
-                if original_text:
-                    ws.cell(row=target_row_idx, column=12, value=original_text)
-
-                wb.save(self.file_path)
-                return "UPDATED"
-
-            else:
-                # --- THÊM DÒNG MỚI (INSERT) ---
-                new_row_idx = ws.max_row + 1
-
-                ws.cell(row=new_row_idx, column=1, value=formatted_time).alignment = Alignment(horizontal="center")
-                ws.cell(row=new_row_idx, column=2, value=platform or "Khác")
-                ws.cell(row=new_row_idx, column=3, value=account_type or "Tài khoản chung")
-                ws.cell(row=new_row_idx, column=4, value=plan or "").alignment = Alignment(horizontal="center")
-
-                # Giá bán số nguyên (VND)
-                if price_vnd is not None and price_vnd > 0:
-                    c_price = ws.cell(row=new_row_idx, column=5, value=price_vnd)
-                    c_price.number_format = '#,##0 "₫"'
-                    c_price.alignment = Alignment(horizontal="right")
+                    final_price_vnd = price_vnd
                 else:
-                    ws.cell(row=new_row_idx, column=5, value=price_raw or "Thương lượng").alignment = Alignment(horizontal="center")
+                    final_price_vnd = old_price_vnd
 
-                ws.cell(row=new_row_idx, column=6, value=price_raw or "")
-                ws.cell(row=new_row_idx, column=7, value=warranty or "")
-                ws.cell(row=new_row_idx, column=8, value=seller_name or "")
-                ws.cell(row=new_row_idx, column=9, value=contact_info or "")
-                ws.cell(row=new_row_idx, column=10, value=group_name or "")
-                ws.cell(row=new_row_idx, column=11, value=message_link or "")
-                ws.cell(row=new_row_idx, column=12, value=original_text or "")
+                final_price_raw = price_raw if price_raw else old_price_raw
+                final_warranty  = warranty if warranty else old_warranty
+                final_seller    = seller_name if seller_name else old_seller
+                final_contact   = contact_info if contact_info else old_contact
+                final_group     = group_name if group_name else old_group
+                final_link      = message_link if message_link else ws.cell(row=target_row_idx, column=11).value
+                final_text      = original_text if original_text else ws.cell(row=target_row_idx, column=12).value
 
-                wb.save(self.file_path)
-                return "INSERTED"
+                # Xóa dòng cũ ở vị trí cũ để đưa lên đầu bảng
+                ws.delete_rows(target_row_idx, 1)
+                status_result = "UPDATED"
+            else:
+                # --- CHƯA CÓ: TẠO MỚI ---
+                final_platform = platform or "Khác"
+                final_acc_type = account_type or "Tài khoản chung"
+                final_plan     = plan or ""
+                final_price_vnd = price_vnd
+                final_price_raw = price_raw or ""
+                final_warranty  = warranty or ""
+                final_seller    = seller_name or ""
+                final_contact   = contact_info or ""
+                final_group     = group_name or ""
+                final_link      = message_link or ""
+                final_text      = original_text or ""
+                status_result = "INSERTED"
+
+            # CHÈN VÀO DÒNG 2 (ĐẦU BẢNG, NGAY DƯỚI TIÊU ĐỀ), ĐẨY DỮ LIỆU CŨ XUỐNG
+            ws.insert_rows(2, 1)
+
+            ws.cell(row=2, column=1, value=formatted_time).alignment = Alignment(horizontal="center")
+            ws.cell(row=2, column=2, value=final_platform)
+            ws.cell(row=2, column=3, value=final_acc_type)
+            ws.cell(row=2, column=4, value=final_plan).alignment = Alignment(horizontal="center")
+
+            # Cột 5: Giá bán VNĐ (định dạng số tiền)
+            if isinstance(final_price_vnd, (int, float)) and final_price_vnd > 0:
+                cell_p = ws.cell(row=2, column=5, value=final_price_vnd)
+                cell_p.number_format = '#,##0 "₫"'
+                cell_p.alignment = Alignment(horizontal="right")
+            else:
+                cell_p = ws.cell(row=2, column=5, value=final_price_raw or "Thương lượng")
+                cell_p.alignment = Alignment(horizontal="center")
+
+            ws.cell(row=2, column=6, value=final_price_raw or "")
+            ws.cell(row=2, column=7, value=final_warranty or "")
+            ws.cell(row=2, column=8, value=final_seller or "")
+            ws.cell(row=2, column=9, value=final_contact or "")
+            ws.cell(row=2, column=10, value=final_group or "")
+            ws.cell(row=2, column=11, value=final_link or "")
+            ws.cell(row=2, column=12, value=final_text or "")
+
+            wb.save(self.file_path)
+            return status_result
 
         except PermissionError:
             print(f"[CẢNH BÁO] File '{self.file_path}' đang mở trong Excel! Hãy đóng file lại để lưu dữ liệu!")
