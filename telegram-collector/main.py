@@ -7,6 +7,12 @@ from telethon import TelegramClient, events
 from excel_handler import ExcelHandler
 from ai_extractor import AIExtractor
 
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 load_dotenv()
 
 API_ID = os.getenv("TELEGRAM_API_ID")

@@ -1,9 +1,12 @@
 import os
 import json
 from typing import List, Optional
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
+
+load_dotenv()
 
 class AccountOffer(BaseModel):
     account_type: str = Field(description="Tên loại tài khoản hoặc dịch vụ (ví dụ: Netflix, Spotify, ChatGPT Plus, Canva, Telegram Premium, Youtube Premium, Mail, Game...)")
