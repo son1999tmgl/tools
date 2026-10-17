@@ -168,8 +168,33 @@ async def main():
         await client.start(phone=phone_to_use)
     else:
         await client.start()
-    print(">> ĐÃ KẾT NỐI VÀ BẬT AI THÀNH CÔNG!")
-    print(">> Đang trực chờ tin nhắn mới... (Nhấn Ctrl+C để dừng)\n")
+
+    print(">> ĐÃ KẾT NỐI VÀ BẬT AI THÀNH CÔNG!\n")
+    print("-" * 75)
+    print("DANH SÁCH CÁC NHÓM / KÊNH ĐANG THAM GIA:")
+    print("-" * 75)
+    group_count = 0
+    async for dialog in client.iter_dialogs():
+        if dialog.is_group or dialog.is_channel:
+            group_count += 1
+            chat_id = str(dialog.id)
+            title = dialog.title or "Không tên"
+            username = f"@{dialog.entity.username}" if getattr(dialog.entity, 'username', None) else ""
+            
+            # Kiểm tra xem nhóm này có nằm trong danh sách quét không
+            is_monitored = True
+            if TARGET_GROUPS:
+                is_monitored = any(
+                    t == chat_id or (username and t.lower() == username.lower()) or t.lower() in title.lower()
+                    for t in TARGET_GROUPS
+                )
+            
+            status_tag = " -> [ĐANG THEO DÕI]" if is_monitored else ""
+            print(f" {group_count:02d}. [{chat_id}] {title} {username}{status_tag}")
+            
+    print("-" * 75)
+    print(f"[*] Tổng số: {group_count} nhóm/kênh.")
+    print("[*] Đang trực chờ tin nhắn mới từ các nhóm... (Nhấn Ctrl+C để dừng)\n")
 
     await client.run_until_disconnected()
 
