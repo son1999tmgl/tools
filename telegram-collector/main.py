@@ -153,7 +153,11 @@ async def main():
             print(f"[Lỗi xử lý tin nhắn] {e}")
 
     print("\nĐang kết nối tài khoản Telegram...")
-    await client.start(phone=PHONE)
+    phone_to_use = PHONE.strip() if PHONE and PHONE.strip() else None
+    if phone_to_use:
+        await client.start(phone=phone_to_use)
+    else:
+        await client.start()
     print(">> ĐÃ KẾT NỐI VÀ BẬT AI THÀNH CÔNG!")
     print(">> Đang trực chờ tin nhắn mới... (Nhấn Ctrl+C để dừng)\n")
 
