@@ -121,11 +121,13 @@ async def main():
             # Nếu có danh sách từng tài khoản cụ thể
             if analysis.offers:
                 for offer in analysis.offers:
-                    print(f"  + Acc: {offer.account_type} | Gói: {offer.duration_or_plan} | Giá: {offer.price} | Note: {offer.warranty_or_notes}")
-                    excel.append_account_offer(
+                    price_display = f"{offer.price_vnd:,}đ".replace(",", ".") if offer.price_vnd else (offer.price_raw or "Thương lượng")
+                    status = excel.upsert_account_offer(
+                        platform=offer.platform,
                         account_type=offer.account_type,
                         plan=offer.duration_or_plan,
-                        price=offer.price,
+                        price_vnd=offer.price_vnd,
+                        price_raw=offer.price_raw,
                         warranty=offer.warranty_or_notes,
                         seller_name=sender_name,
                         contact_info=contact,
@@ -134,12 +136,15 @@ async def main():
                         original_text=text,
                         timestamp=msg_date
                     )
+                    action_label = "CẬP NHẬT DÒNG CŨ" if status == "UPDATED" else "THÊM DÒNG MỚI"
+                    print(f"  -> [{action_label}] [{offer.platform}] {offer.account_type} | Gói: {offer.duration_or_plan} | Giá: {price_display}")
             else:
-                # Trường hợp nhận diện là tin bán nhưng không chia rõ từng item
-                excel.append_account_offer(
+                status = excel.upsert_account_offer(
+                    platform="Khác",
                     account_type="Tài khoản khác",
                     plan="",
-                    price="Thương lượng",
+                    price_vnd=None,
+                    price_raw="Thương lượng",
                     warranty="",
                     seller_name=sender_name,
                     contact_info=contact,
@@ -148,6 +153,8 @@ async def main():
                     original_text=text,
                     timestamp=msg_date
                 )
+                action_label = "CẬP NHẬT DÒNG CŨ" if status == "UPDATED" else "THÊM DÒNG MỚI"
+                print(f"  -> [{action_label}] Tin rao bán chung: {chat_title}")
 
         except Exception as e:
             print(f"[Lỗi xử lý tin nhắn] {e}")
