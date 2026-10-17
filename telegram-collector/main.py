@@ -69,26 +69,48 @@ async def main():
     @client.on(events.NewMessage)
     async def message_handler(event):
         try:
-            # Chỉ nhận tin nhắn trong Group hoặc Channel
-            if not (event.is_group or event.is_channel):
+            # Bỏ qua tin nhắn do chính tài khoản của bạn gửi đi
+            if event.out:
                 return
 
             chat = await event.get_chat()
-            chat_title = getattr(chat, 'title', 'Không tên')
-            chat_id = str(chat.id)
-            chat_username = getattr(chat, 'username', '')
+            
+            # Xử lý tên: Nhóm/Channel dùng title, Cá nhân/Bot dùng first_name + last_name
+            chat_title = getattr(chat, 'title', None)
+            if not chat_title:
+                first = getattr(chat, 'first_name', '') or ''
+                last = getattr(chat, 'last_name', '') or ''
+                chat_title = f"{first} {last}".strip()
+                if not chat_title:
+                    chat_title = getattr(chat, 'username', '') or "Tin nhắn riêng"
 
-            # Lọc theo danh sách nhóm nếu có
+            chat_id = str(chat.id)
+            chat_username = getattr(chat, 'username', '') or ''
+
+            # Lọc theo danh sách TARGET_GROUPS nếu có chỉ định
             if TARGET_GROUPS:
                 matched_target = False
                 for target in TARGET_GROUPS:
-                    if target == chat_id or (chat_username and f"@{chat_username.lower()}" == target.lower()):
+                    clean_t = target.strip().lower()
+                    if not clean_t:
+                        continue
+                    # 1. So khớp ID (nhóm -100xxx, bot/user số dương hoặc âm)
+                    if clean_t == chat_id:
                         matched_target = True
                         break
-                    elif target.lower() in chat_title.lower():
+                    # 2. So khớp Username (@bot, @user, @channel)
+                    if chat_username and (clean_t == f"@{chat_username.lower()}" or clean_t == chat_username.lower()):
+                        matched_target = True
+                        break
+                    # 3. So khớp Tên hiển thị
+                    if chat_title and clean_t in chat_title.lower():
                         matched_target = True
                         break
                 if not matched_target:
+                    return
+            else:
+                # Nếu TARGET_GROUPS để trống: chỉ theo dõi group/channel để tránh quét tin riêng tư gia đình/bạn bè
+                if not (event.is_group or event.is_channel):
                     return
 
             text = event.raw_text or ""
