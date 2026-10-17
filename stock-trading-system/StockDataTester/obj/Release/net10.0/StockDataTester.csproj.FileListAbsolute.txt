@@ -1,0 +1,15 @@
+D:\tools\stock-trading-system\StockDataTester\bin\Release\net10.0\StockDataTester.exe
+D:\tools\stock-trading-system\StockDataTester\bin\Release\net10.0\StockDataTester.deps.json
+D:\tools\stock-trading-system\StockDataTester\bin\Release\net10.0\StockDataTester.runtimeconfig.json
+D:\tools\stock-trading-system\StockDataTester\bin\Release\net10.0\StockDataTester.dll
+D:\tools\stock-trading-system\StockDataTester\bin\Release\net10.0\StockDataTester.pdb
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.GeneratedMSBuildEditorConfig.editorconfig
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.AssemblyInfoInputs.cache
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.AssemblyInfo.cs
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.csproj.CoreCompileInputs.cache
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.sourcelink.json
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.dll
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\refint\StockDataTester.dll
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.pdb
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\StockDataTester.genruntimeconfig.cache
+D:\tools\stock-trading-system\StockDataTester\obj\Release\net10.0\ref\StockDataTester.dll
