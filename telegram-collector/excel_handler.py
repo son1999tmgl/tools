@@ -3,6 +3,8 @@ from datetime import datetime
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
+import requests
+
 DEFAULT_HEADERS = [
     "Thời gian cập nhật",   # Col 1 (A)
     "Tên TK bán",           # Col 2 (B) - VD: Gemini, Netflix, ChatGPT
@@ -23,9 +25,10 @@ def _norm(val) -> str:
     return str(val or "").strip().lower()
 
 class ExcelHandler:
-    def __init__(self, file_path: str = "account_sales.xlsx", sheet_name: str = "AccountSales"):
+    def __init__(self, file_path: str = "account_sales.xlsx", sheet_name: str = "AccountSales", google_sheet_url: str = None):
         self.file_path = file_path
         self.sheet_name = sheet_name
+        self.google_sheet_url = google_sheet_url or os.getenv("GOOGLE_SHEET_WEBHOOK_URL")
         self._ensure_file_exists()
 
     def _ensure_file_exists(self):
@@ -180,6 +183,30 @@ class ExcelHandler:
             ws.cell(row=2, column=12, value=final_text or "")
 
             wb.save(self.file_path)
+
+            # ĐỒNG BỘ LÊN GOOGLE SHEETS NẾU ĐƯỢC CẤU HÌNH
+            if self.google_sheet_url:
+                try:
+                    payload = {
+                        "rows": [[
+                            formatted_time,
+                            final_platform,
+                            final_acc_type,
+                            final_plan,
+                            final_price_vnd if (isinstance(final_price_vnd, (int, float)) and final_price_vnd > 0) else (final_price_raw or "Thương lượng"),
+                            final_price_raw or "",
+                            final_warranty or "",
+                            final_seller or "",
+                            final_contact or "",
+                            final_group or "",
+                            final_link or "",
+                            final_text or ""
+                        ]]
+                    }
+                    requests.post(self.google_sheet_url, json=payload, timeout=8)
+                except Exception as g_err:
+                    print(f"[GoogleSheets Error] Không thể đồng bộ: {g_err}")
+
             return status_result
 
         except PermissionError:
