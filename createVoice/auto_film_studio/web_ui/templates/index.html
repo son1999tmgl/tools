@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Sản Xuất Phim AI Tự Động (Auto Film Studio)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; }
+        .form-control, .form-select { background-color: #0d1117; border-color: #30363d; color: #c9d1d9; }
+        .form-control::placeholder { color: #8b949e !important; opacity: 1; }
+        .form-control:focus, .form-select:focus { background-color: #161b22; border-color: #58a6ff; color: #fff; box-shadow: none; }
+        .nav-pills .nav-link { color: #8b949e; border-radius: 6px; }
+        .nav-pills .nav-link.active { background-color: #238636; color: #fff; }
+        .badge-status { font-size: 0.85rem; padding: 5px 10px; }
+        .asset-preview { width: 100%; height: 260px; object-fit: cover; border-radius: 6px; background-color: #010409; }
+        .asset-card { transition: transform 0.2s; }
+        .asset-card:hover { transform: translateY(-4px); }
+    </style>
+</head>
+<body class="py-4">
+    <div class="container-fluid px-4">
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom border-secondary">
+            <div>
+                <h3 class="fw-bold text-light mb-0"><i class="bi bi-camera-reels text-warning me-2"></i>Auto Film Studio</h3>
+                <small class="text-secondary">Hệ thống sản xuất phim dài tập AI tự động (Wan 2.1 1.3B + VieNeu-TTS + Flux)</small>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-warning me-2" data-bs-toggle="modal" data-bs-target="#accountsModal"><i class="bi bi-cloud-arrow-up me-1"></i> Quản Lý Tài Khoản GPU</button>
+                <button class="btn btn-sm btn-outline-info me-2" onclick="checkConnections()"><i class="bi bi-broadcast me-1"></i> Kiểm Tra Kết Nối</button>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#newProjectModal"><i class="bi bi-plus-circle me-1"></i> Tạo Phim Mới</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- SIDEBAR: DANH SÁCH BỘ PHIM -->
+            <div class="col-md-3">
+                <div class="card p-3 mb-4">
+                    <h6 class="fw-bold text-uppercase text-secondary mb-3"><i class="bi bi-film me-2"></i>Các Dự Án Phim</h6>
+                    <div id="projectList" class="list-group list-group-flush">
+                        <div class="text-secondary small">Đang tải danh sách phim...</div>
+                    </div>
+                </div>
+
+                <!-- SYSTEM STATUS -->
+                <div class="card p-3">
+                    <h6 class="fw-bold text-uppercase text-secondary mb-3"><i class="bi bi-cpu me-2"></i>Trạng Thái Tài Nguyên</h6>
+                    <div id="statusList" class="small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>VieNeu-TTS:</span> <span id="stVieNeu" class="badge bg-secondary">Chưa kiểm tra</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Kokoro-TTS:</span> <span id="stKokoro" class="badge bg-secondary">Chưa kiểm tra</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>FFMPEG:</span> <span id="stFFMPEG" class="badge bg-secondary">Chưa kiểm tra</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Flux Image API:</span> <span id="stImageApi" class="badge bg-secondary">Chưa kiểm tra</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT: CHI TIẾT BỘ PHIM & QUẢN LÝ NHÂN VẬT/TẬP PHIM -->
+            <div class="col-md-9">
+                <div id="noProjectAlert" class="alert alert-dark text-center py-5">
+                    <h5><i class="bi bi-arrow-left-circle me-2"></i>Hãy chọn một bộ phim từ danh sách bên trái hoặc bấm "Tạo Phim Mới".</h5>
+                </div>
+
+                <div id="projectDashboard" style="display: none;">
+                    <div class="card p-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h4 id="curProjectTitle" class="text-warning fw-bold mb-1">Tên Phim</h4>
+                                <p id="curProjectDesc" class="text-secondary mb-2 small">Mô tả phim</p>
+                                <div class="text-muted small">
+                                    <span class="me-3"><i class="bi bi-collection-play me-1"></i><b id="curEpCount">0</b> Tập</span>
+                                    <span><i class="bi bi-people me-1"></i><b id="curAssetCount">0</b> Nhân vật/Vật phẩm</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TABS -->
+                    <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="tab-script" data-bs-toggle="pill" data-bs-target="#pane-script"><i class="bi bi-file-earmark-text me-1"></i> BƯỚC 1: Kịch Bản & Phân Tích Nhân Vật</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="tab-fullscript" data-bs-toggle="pill" data-bs-target="#pane-fullscript"><i class="bi bi-book me-1"></i> Xem Toàn Văn Kịch Bản Chi Tiết (50-120P)</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="tab-assets" data-bs-toggle="pill" data-bs-target="#pane-assets"><i class="bi bi-person-bounding-box me-1"></i> BƯỚC 2: Kho Nhân Vật/Vật Phẩm Cần Tạo</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="tab-scenes" data-bs-toggle="pill" data-bs-target="#pane-scenes"><i class="bi bi-film me-1"></i> BƯỚC 3: Danh Sách Phân Cảnh (Test / Chạy Hàng Loạt)</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="tab-poster" data-bs-toggle="pill" data-bs-target="#pane-poster"><i class="bi bi-image me-1"></i> Poster Điện Ảnh (Tùy Chọn)</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="pills-tabContent">
+                        <!-- TAB 1: KỊCH BẢN & BÓC TÁCH ASSET -->
+                        <div class="tab-pane fade show active" id="pane-script">
+                            <div class="card p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="text-light mb-0"><i class="bi bi-file-earmark-text text-warning me-2"></i>Kịch Bản Chi Tiết & Phân Tích Phân Cảnh (Tập 1)</h5>
+                                        <small class="text-secondary">AI viết kịch bản chi tiết (50 - 120 phút), kết thúc luôn là điểm cao trào (Cliffhanger) tạo kịch tính cho tập tiếp theo.</small>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-outline-info btn-sm me-2" data-bs-toggle="modal" data-bs-target="#editScriptModal"><i class="bi bi-pencil-square me-1"></i> Gửi Yêu Cầu Điều Chỉnh Kịch Bản</button>
+                                        <button class="btn btn-warning btn-sm fw-bold" onclick="generateEpisodeScript()"><i class="bi bi-magic me-1"></i> AI Viết Kịch Bản (50-120 Phút)</button>
+                                    </div>
+                                </div>
+                                <div id="scriptContentBox" class="bg-dark p-3 rounded border border-secondary mb-3" style="max-height: 250px; overflow-y: auto;">
+                                    <span class="text-secondary small">Chưa có kịch bản cho tập này. Bấm nút "AI Viết Kịch Bản Mới" để bắt đầu!</span>
+                                </div>
+
+                                <h6 class="text-warning fw-bold small text-uppercase mb-2"><i class="bi bi-list-check me-1"></i>Danh Sách Nhân Vật & Đồ Vật Được Bóc Tách Từ Kịch Bản:</h6>
+                                <div id="detectedAssetsList" class="row g-2">
+                                    <div class="text-secondary small">Chưa có kịch bản để bóc tách nhân vật.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 1.5: TOÀN VĂN KỊCH BẢN CHI TIẾT (FULL SCREENPLAY) -->
+                        <div class="tab-pane fade" id="pane-fullscript">
+                            <div class="card p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="text-light mb-0"><i class="bi bi-book-half text-warning me-2"></i>Toàn Văn Kịch Bản Chi Tiết (Full Screenplay)</h5>
+                                        <small class="text-secondary">Lưu thành file kịch bản độc lập (`script_screenplay.txt`). Bạn có thể đọc trực tiếp hoặc sửa ngay trong khung này và bấm Lưu.</small>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-outline-info btn-sm me-2" onclick="saveEditedScript()"><i class="bi bi-save me-1"></i> Lưu Chỉnh Sửa Vào File</button>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="copyFullScript()"><i class="bi bi-clipboard me-1"></i> Sao Chép</button>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <textarea id="fullScriptEditor" class="form-control bg-dark text-light border-secondary" rows="18" style="font-family: 'Courier New', Courier, monospace; line-height: 1.6; font-size: 0.9rem;" placeholder="Đang tải toàn văn kịch bản chi tiết..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: ASSETS (KHO NHÂN VẬT & VẬT PHẨM) -->
+                        <div class="tab-pane fade" id="pane-assets">
+                            <div class="card p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="text-light mb-0"><i class="bi bi-person-badge text-warning me-2"></i>Kho Nhân Vật & Thiết Lập Giọng Nói (Voice Cast)</h5>
+                                        <small class="text-secondary">Ảnh nhân vật & kiến trúc do chính AI tạo độc quyền, lưu thẳng vào ổ cứng và gán giọng đọc (VieNeu / Kokoro) cố định cho từng nhân vật.</small>
+                                    </div>
+                                </div>
+                                <div id="assetsGrid" class="row g-3">
+                                    <div class="text-secondary small">Chưa có asset nào được lưu.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: DANH SÁCH PHÂN CẢNH (SCENES) -->
+                        <div class="tab-pane fade" id="pane-scenes">
+                            <div class="card p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="text-light mb-0">Danh Sách Phân Cảnh (Scenes)</h5>
+                                        <small class="text-secondary">Bạn có quyền bấm Render thử từng cảnh bất kỳ hoặc Chạy tự động toàn bộ tập.</small>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-outline-info btn-sm me-2" onclick="testFirstScene()"><i class="bi bi-play-circle me-1"></i> Render Thử 1 Cảnh Mẫu</button>
+                                        <button class="btn btn-success btn-sm fw-bold" onclick="runBatchScenes()"><i class="bi bi-fast-forward-fill me-1"></i> Chạy Tự Động Hết Tập (Xoay Vòng GPU)</button>
+                                    </div>
+                                </div>
+                                <div id="scenesTableContainer" class="table-responsive">
+                                    <table class="table table-dark table-sm table-bordered border-secondary align-middle">
+                                        <thead>
+                                            <tr class="text-secondary small">
+                                                <th style="width: 80px;">Cảnh</th>
+                                                <th>Nhân Vật / Asset</th>
+                                                <th>Lời Thoại (VieNeu-TTS)</th>
+                                                <th>Prompt Wan 2.1 (Chuyển Động)</th>
+                                                <th style="width: 90px;">Thời Lượng</th>
+                                                <th style="width: 120px;">Trạng Thái</th>
+                                                <th style="width: 140px;">Thao Tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="scenesTableBody">
+                                            <tr><td colspan="7" class="text-center text-secondary small py-3">Chưa có kịch bản phân cảnh. Hãy vào Tab 1 để tạo!</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 4: POSTER ĐIỆN ẢNH (TÙY CHỌN TẠO BẤT CỨ LÚC NÀO) -->
+                        <div class="tab-pane fade" id="pane-poster">
+                            <div class="card p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="text-light mb-0">Poster Điện Ảnh Của Bộ Phim</h5>
+                                        <small class="text-secondary">Tạo hoặc đổi Poster bất cứ lúc nào bạn muốn sau khi đã hình thành xong nhân vật và phong cách phim.</small>
+                                    </div>
+                                    <button class="btn btn-warning btn-sm fw-bold" onclick="generateProjectPoster()"><i class="bi bi-palette me-1"></i> Vẽ / Đổi Poster Mới</button>
+                                </div>
+                                <div class="row align-items-center bg-dark p-3 rounded border border-secondary">
+                                    <div class="col-md-4 text-center">
+                                        <div id="projectPosterBox" style="min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                                            <span class="text-secondary small">Chưa tạo Poster. Bấm nút phía trên để tạo.</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <h5 id="posterTitleDisplay" class="text-warning fw-bold">Tên Phim</h5>
+                                        <p id="posterHookDisplay" class="text-danger fw-bold small">"Câu giật tít..."</p>
+                                        <p id="posterSynopsisDisplay" class="text-secondary small">Tóm tắt...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL QUẢN LÝ TÀI KHOẢN GPU (KAGGLE / COLAB) -->
+    <div class="modal fade" id="accountsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content card">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-light"><i class="bi bi-gpu-card text-warning me-2"></i>Quản Lý & Xoay Vòng Tài Khoản GPU (Kaggle / Colab)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- FORM THÊM TÀI KHOẢN -->
+                    <div class="card p-3 mb-4 bg-dark border-secondary">
+                        <h6 class="text-warning small fw-bold mb-3"><i class="bi bi-plus-circle me-1"></i>Thêm Tài Khoản Mới Vào Vòng Xoay</h6>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label small text-info fw-bold">1. Chọn Nền Tảng:</label>
+                                <select id="accPlatform" class="form-select form-select-sm" onchange="onPlatformChange()">
+                                    <option value="kaggle">Kaggle GPU (30h/tuần)</option>
+                                    <option value="colab">Google Colab (T4 GPU)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-light fw-bold">2. Tên Gợi Nhớ Cho Bạn:</label>
+                                <input type="text" id="accName" class="form-control form-control-sm" placeholder="VD: Nick_Kaggle_1">
+                                <small class="text-secondary" style="font-size:0.75rem;">(Đặt tên gì để bạn dễ nhận biết)</small>
+                            </div>
+                            <div class="col-md-5">
+                                <label id="lblUsername" class="form-label small text-light fw-bold">3. Username Kaggle:</label>
+                                <input type="text" id="accUsername" class="form-control form-control-sm" placeholder="VD: nguyenvanan">
+                                <small id="lblUsernameHelp" class="text-secondary" style="font-size:0.75rem;">(Tên tài khoản hiển thị trên Kaggle)</small>
+                            </div>
+                            <div class="col-md-8">
+                                <label id="lblKey" class="form-label small text-light fw-bold">4. Kaggle API Key (Chuỗi bí mật):</label>
+                                <input type="text" id="accKey" class="form-control form-control-sm" placeholder="VD: a1b2c3d4e5f6...">
+                                <small id="lblKeyHelp" class="text-secondary" style="font-size:0.75rem;">(Vào Kaggle -> Settings -> Create New Token -> Mở file kaggle.json copy dòng key)</small>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-center pt-3">
+                                <button class="btn btn-primary btn-sm w-100 py-2 fw-bold" onclick="addNewAccount()"><i class="bi bi-save me-1"></i> Lưu Vào Vòng Xoay</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DANH SÁCH TÀI KHOẢN HIỆN CÓ -->
+                    <h6 class="text-light small fw-bold mb-2"><i class="bi bi-list-check me-1"></i>Danh Sách Tài Khoản Sẵn Sàng Xoay Vòng:</h6>
+                    <div id="accountsTableContainer" class="table-responsive">
+                        <table class="table table-dark table-sm table-bordered border-secondary">
+                            <thead>
+                                <tr class="text-secondary small">
+                                    <th>Nền Tảng</th>
+                                    <th>Tên Gợi Nhớ</th>
+                                    <th>Username</th>
+                                    <th>Trạng Thái Quota</th>
+                                    <th>Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTableBody">
+                                <tr><td colspan="5" class="text-center text-secondary small">Chưa có tài khoản nào.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TẠO PHIM MỚI -->
+    <div class="modal fade" id="newProjectModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content card">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-light"><i class="bi bi-magic text-warning me-2"></i>Trợ Lý AI Đề Xuất Ý Tưởng Phim & Tạo Poster</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- KHU VỰC YÊU CẦU / RANDOM -->
+                    <div class="card p-3 mb-3 bg-dark border-secondary">
+                        <label class="form-label small text-info fw-bold">Yêu cầu của bạn (Bỏ trống nếu muốn AI tự ngẫu nhiên hoàn toàn):</label>
+                        <div class="input-group">
+                            <input type="text" id="ideaRequirement" class="form-control form-control-sm" placeholder="VD: Phim mạt thế tu tiên, có thành trì nâng cấp, phong cách u tối...">
+                            <button class="btn btn-warning btn-sm fw-bold px-3" onclick="suggestFilmIdea()">
+                                <i class="bi bi-lightbulb-fill me-1"></i> Bấm Nghĩ Ý Tưởng Mới
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KẾT QUẢ Ý TƯỞNG CỦA AI -->
+                    <div id="ideaResultCard" class="card p-3 border-secondary" style="display: none; background: #161b22;">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-danger text-uppercase px-2 py-1"><i class="bi bi-fire me-1"></i>Câu Giật Tít (Hook):</span>
+                            <span class="badge bg-info text-dark fw-bold" id="ideaGenreBadge">Thể Loại</span>
+                        </div>
+                        <h4 class="text-warning fw-bold mb-2" id="ideaTitle">Tên Phim Sẽ Ở Đây</h4>
+                        <div class="p-2 mb-2 rounded bg-danger bg-opacity-10 border border-danger">
+                            <p class="text-danger fw-bold small mb-0" id="ideaHook" style="font-size: 0.95rem;">"Câu giật tít..."</p>
+                        </div>
+                        <p class="text-light small mb-3" id="ideaSynopsis">Tóm tắt nội dung...</p>
+
+                        <div class="mt-2 text-end">
+                            <button class="btn btn-success btn-sm fw-bold px-4 py-2" onclick="approveAndCreateProject()">
+                                <i class="bi bi-check-circle-fill me-1"></i> Tôi Duyệt Ý Tưởng Này - Khởi Tạo Bộ Phim & Viết Kịch Bản
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GỬI YÊU CẦU ĐIỀU CHỈNH KỊCH BẢN -->
+    <div class="modal fade" id="editScriptModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content card">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-light"><i class="bi bi-pencil-square text-info me-2"></i>Yêu Cầu AI Điều Chỉnh Kịch Bản</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small text-info fw-bold">Mục tiêu thời lượng tập phim (Dao động từ 50 đến 120 phút):</label>
+                        <select id="targetEpisodeDuration" class="form-select form-select-sm">
+                            <option value="auto" selected>⚡ AI Tự Động Quyết Định (Dựa theo nhịp độ câu chuyện, 50 - 120P)</option>
+                            <option value="60">Tập tiêu chuẩn ~60 Phút (1 Tiếng) - Kết thúc cao trào</option>
+                            <option value="50">Tập ngắn gọn ~50 Phút - Nhịp phim dồn dập</option>
+                            <option value="75">Tập đại chiến ~75 Phút (1 Tiếng 15 Phút)</option>
+                            <option value="90">Tập điện ảnh ~90 Phút (1.5 Tiếng)</option>
+                            <option value="120">Tập đại kết cục ~120 Phút (2 Tiếng)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-light fw-bold">Ý kiến / Yêu cầu điều chỉnh kịch bản của bạn:</label>
+                        <textarea id="scriptAdjustmentPrompt" class="form-control" rows="5" placeholder="VD: Hãy thêm vào một nhân vật sư muội phản bội ở giữa tập; Tăng thêm cảnh đánh nhau ở đoạn phá thành; Cho nhân vật chính nâng cấp pháo đài lên cấp 3 ở cuối tập để tạo cliffhanger..."></textarea>
+                        <small class="text-secondary" style="font-size:0.8rem;">(Bạn có thể yêu cầu thêm bớt nhân vật, đổi tình tiết cao trào, thay đổi giọng điệu...)</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-info btn-sm fw-bold" onclick="submitScriptAdjustment()"><i class="bi bi-arrow-repeat me-1"></i> Áp Dụng & Viết Lại Kịch Bản</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SINH ASSET / NHÂN VẬT -->
+    <div class="modal fade" id="newAssetModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content card">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-light">Sinh & Khóa Nhân Vật / Vật Phẩm</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Mã định danh Asset (viết liền):</label>
+                                <input type="text" id="genAssetName" class="form-control" placeholder="phao_dai_lv1 hoặc tuong_quan_nam">
+                                <small class="text-secondary">Ví dụ: `dinh_hai`, `maya`, `linh_gac_apex`</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mô tả đặc điểm hình ảnh (Tiếng Việt chi tiết):</label>
+                                <textarea id="genAssetPrompt" class="form-control" rows="5" placeholder="Chân dung điện ảnh cận cảnh sắc nét, ngoại hình, trang phục, khí chất..."></textarea>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-warning btn-sm w-100" id="btnGenPreview" onclick="generateAssetPreview()">
+                                    <i class="bi bi-dice-5 me-1"></i> Bấm Sinh Ảnh Thử
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <label class="form-label d-block text-start">Khung Xem Trước (Preview):</label>
+                            <div id="previewContainer" class="border border-secondary rounded p-2" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: #010409;">
+                                <span class="text-muted small">Bấm "Sinh Ảnh Thử" để xem ảnh tạo bởi Flux...</span>
+                            </div>
+                            <button class="btn btn-success btn-sm mt-3 w-100" id="btnSaveAsset" style="display: none;" onclick="saveCurrentAsset()">
+                                <i class="bi bi-check-circle me-1"></i> Tôi Ưng Ý - Lưu Chốt Cho Phim
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentProject = null;
+        let currentGeneratedUrl = null;
+        let currentCachedFile = null;
+        let currentSeed = null;
+
+        async function checkConnections() {
+            try {
+                const res = await fetch('/api/test_connections');
+                const data = await res.json();
+                const checks = data.system_checks;
+                
+                document.getElementById('stVieNeu').className = checks.vieneu_tts.status === 'ready' ? 'badge bg-success' : 'badge bg-danger';
+                document.getElementById('stVieNeu').innerText = checks.vieneu_tts.status.toUpperCase();
+
+                document.getElementById('stKokoro').className = checks.kokoro_tts.status === 'ready' ? 'badge bg-success' : 'badge bg-danger';
+                document.getElementById('stKokoro').innerText = checks.kokoro_tts.status.toUpperCase();
+
+                document.getElementById('stFFMPEG').className = checks.ffmpeg.status === 'installed' ? 'badge bg-success' : 'badge bg-danger';
+                document.getElementById('stFFMPEG').innerText = checks.ffmpeg.status.toUpperCase();
+
+                document.getElementById('stImageApi').className = 'badge bg-success';
+                document.getElementById('stImageApi').innerText = 'AI NỘI BỘ (SẴN SÀNG)';
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadProjects() {
+            const res = await fetch('/api/projects');
+            const data = await res.json();
+            const listEl = document.getElementById('projectList');
+            listEl.innerHTML = '';
+            
+            if (data.projects.length === 0) {
+                listEl.innerHTML = '<div class="text-secondary small">Chưa có bộ phim nào. Hãy tạo phim mới!</div>';
+                return;
+            }
+
+            data.projects.forEach(p => {
+                const displayName = (p.title || p.name || p).replace(/_/g, ' ');
+                const pId = p.name || p;
+                const div = document.createElement('div');
+                div.className = `list-group-item bg-transparent text-light border-secondary p-2 d-flex justify-content-between align-items-center ${currentProject === pId ? 'active bg-primary' : ''}`;
+                div.innerHTML = `
+                    <span role="button" class="text-truncate flex-grow-1 me-2 fw-bold" onclick="selectProject('${pId}')">
+                        <i class="bi bi-film me-2 text-warning"></i>${displayName}
+                    </span>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-2 border-0" title="Xóa bộ phim này" onclick="deleteFilmProject('${pId}', event)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                listEl.appendChild(div);
+            });
+        }
+
+        async function saveEditedScript() {
+            if (!currentProject) return alert('Hãy chọn một bộ phim trước');
+            const newContent = document.getElementById('fullScriptEditor').value;
+
+            try {
+                const res = await fetch(`/api/project/${currentProject}/save_script_content`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ full_screenplay: newContent })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert('✅ Đã lưu toàn văn kịch bản thành công vào file ổ cứng!');
+                } else {
+                    alert('❌ Lỗi: ' + data.message);
+                }
+            } catch (e) {
+                alert('Lỗi kết nối khi lưu kịch bản');
+            }
+        }
+
+        function copyFullScript() {
+            const text = document.getElementById('fullScriptEditor').value;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Đã sao chép toàn bộ kịch bản chi tiết vào bộ nhớ tạm!');
+            });
+        }
+
+        async function submitScriptAdjustment() {
+            if (!currentProject) return alert('Hãy chọn phim trước');
+            const targetDuration = document.getElementById('targetEpisodeDuration').value;
+            const userNotes = document.getElementById('scriptAdjustmentPrompt').value;
+
+            const box = document.getElementById('scriptContentBox');
+            box.innerHTML = '<span class="spinner-border spinner-border-sm text-warning me-2"></span> Đang điều chỉnh kịch bản theo yêu cầu của bạn và tính toán thời lượng 60 phút...';
+            bootstrap.Modal.getInstance(document.getElementById('editScriptModal')).hide();
+
+            try {
+                const res = await fetch(`/api/project/${currentProject}/generate_script`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        target_duration: targetDuration,
+                        adjustment_notes: userNotes
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    renderScriptView(data.script);
+                }
+            } catch (e) {
+                box.innerHTML = '<span class="text-danger">Lỗi khi cập nhật kịch bản.</span>';
+            }
+        }
+
+        async function generateEpisodeScript() {
+            if (!currentProject) return alert('Hãy chọn một bộ phim trước');
+            const box = document.getElementById('scriptContentBox');
+            box.innerHTML = '<span class="spinner-border spinner-border-sm text-warning me-2"></span> AI đang phân tích bối cảnh, sáng tác kịch bản chi tiết và bóc tách danh sách nhân vật...';
+            
+            try {
+                const res = await fetch(`/api/project/${currentProject}/generate_script`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_duration: 60 })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    renderScriptView(data.script);
+                } else {
+                    box.innerHTML = `<span class="text-danger">Lỗi: ${data.message || 'Không thể tạo kịch bản'}</span>`;
+                }
+            } catch (e) {
+                box.innerHTML = '<span class="text-danger">Lỗi khi gọi AI viết kịch bản.</span>';
+            }
+        }
+
+        async function loadProjectScript(projectName) {
+            try {
+                const res = await fetch(`/api/project/${projectName}/get_script`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    renderScriptView(data.script);
+                } else {
+                    document.getElementById('scriptContentBox').innerHTML = '<span class="text-secondary small">Chưa có kịch bản cho tập này. Bấm nút "AI Viết Kịch Bản Mới" để bắt đầu!</span>';
+                    document.getElementById('detectedAssetsList').innerHTML = '<div class="text-secondary small">Chưa có kịch bản để bóc tách nhân vật.</div>';
+                    document.getElementById('scenesTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-secondary small py-3">Chưa có kịch bản phân cảnh. Hãy vào Tab 1 để tạo!</td></tr>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderScriptView(script) {
+            // Hiển thị nội dung kịch bản
+            const box = document.getElementById('scriptContentBox');
+            const totalDuration = script.estimated_duration || "Khoảng 50 - 120 phút";
+            const actsCount = (script.acts || []).length;
+            const cliffhangerText = script.cliffhanger || "Đang cập nhật cao trào...";
+
+            box.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+                    <div>
+                        <span class="badge bg-danger text-uppercase me-2"><i class="bi bi-clock-history me-1"></i>Thời Lượng: ${totalDuration}</span>
+                        <span class="badge bg-primary me-2">${actsCount > 0 ? actsCount + ' Hồi' : '4 Hồi kịch tính'}</span>
+                        <span class="badge bg-secondary">${script.scenes.length} Phân Cảnh Chi Tiết</span>
+                    </div>
+                </div>
+                <div class="fw-bold text-warning mb-1" style="font-size: 1.1rem;">${script.title}</div>
+                <div class="text-light small mb-3">${script.synopsis}</div>
+                
+                ${(script.acts || []).map((act, idx) => `
+                    <div class="p-2 mb-2 rounded bg-secondary bg-opacity-10 border border-secondary">
+                        <div class="text-info fw-bold small"><i class="bi bi-play-circle-fill me-1"></i>HỒI ${idx+1}: ${act.act_name} (${act.duration_est})</div>
+                        <div class="text-secondary" style="font-size: 0.8rem;">${act.summary}</div>
+                    </div>
+                `).join('')}
+
+                <div class="p-2 mt-3 rounded bg-danger bg-opacity-10 border border-danger">
+                    <div class="text-danger fw-bold small"><i class="bi bi-fire me-1"></i>ĐIỂM KẾT THÚC CAO TRÀO (CLIFFHANGER):</div>
+                    <div class="text-light small fst-italic">${cliffhangerText}</div>
+                </div>
+            `;
+
+            // HIỂN THỊ TOÀN VĂN KỊCH BẢN CHI TIẾT VÀO Ô BIÊN TẬP
+            const editor = document.getElementById('fullScriptEditor');
+            if (script.full_screenplay) {
+                editor.value = script.full_screenplay;
+            } else {
+                editor.value = "Chưa có nội dung kịch bản chi tiết. Bấm tạo kịch bản ở Bước 1!";
+            }
+
+            // Hiển thị danh sách nhân vật/vật phẩm bóc tách
+            const assetList = document.getElementById('detectedAssetsList');
+            assetList.innerHTML = '';
+            script.detected_assets.forEach(item => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6';
+                col.innerHTML = `
+                    <div class="card p-2 bg-dark border-secondary">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-light small">${item.name}</span>
+                            <span class="badge ${item.status === 'ready' ? 'bg-success' : 'bg-warning text-dark'}">${item.status === 'ready' ? 'Đã có ảnh chính thức' : 'Cần tạo ảnh'}</span>
+                        </div>
+                        <div class="text-secondary" style="font-size: 0.75rem;">Mã: <code>${item.id}</code> | Phân loại: ${item.category}</div>
+                        <div class="mt-2 d-flex gap-2">
+                            <button class="btn btn-outline-info btn-sm py-0 px-2" style="font-size: 0.75rem;" onclick="viewAssetPreview('${item.id}', '${item.name}', '${(item.prompt || item.name).replace(/'/g, "\\'")}')">
+                                <i class="bi bi-eye me-1"></i> Xem / Tạo Ảnh Asset
+                            </button>
+                        </div>
+                    </div>
+                `;
+                assetList.appendChild(col);
+            });
+
+            // Hiển thị bảng phân cảnh
+            const scenesTbody = document.getElementById('scenesTableBody');
+            scenesTbody.innerHTML = '';
+            script.scenes.forEach(sc => {
+                const tr = document.createElement('tr');
+                tr.className = 'small';
+                tr.innerHTML = `
+                    <td class="fw-bold text-info">${sc.scene_id}</td>
+                    <td><code>${sc.asset_ref}</code></td>
+                    <td class="text-light">${sc.voice_text}</td>
+                    <td class="text-secondary" style="font-size: 0.75rem;">${sc.motion_prompt}</td>
+                    <td><span class="badge bg-secondary">${sc.duration}</span></td>
+                    <td><span class="badge bg-dark border border-secondary">${sc.status}</span></td>
+                    <td>
+                        <button class="btn btn-outline-info btn-sm py-0 px-1" title="Render thử cảnh này" onclick="alert('Lệnh render thử cảnh ${sc.scene_id} sẽ được gửi tới GPU Kaggle!')">
+                            <i class="bi bi-play"></i> Test
+                        </button>
+                    </td>
+                `;
+                scenesTbody.appendChild(tr);
+            });
+        }
+
+        function viewAssetPreview(id, name, prompt) {
+            document.getElementById('genAssetName').value = id;
+            document.getElementById('genAssetPrompt').value = prompt || name;
+            
+            const imgUrl = `/api/project/${currentProject}/asset_img/${id}.png`;
+            const testImg = new Image();
+            testImg.onload = function() {
+                document.getElementById('previewContainer').innerHTML = `<img src="${imgUrl}?t=${new Date().getTime()}" class="img-fluid rounded border border-secondary shadow" style="max-height: 250px;" alt="${id}">`;
+                document.getElementById('btnSaveAsset').style.display = 'none';
+                const modal = new bootstrap.Modal(document.getElementById('newAssetModal'));
+                modal.show();
+            };
+            testImg.onerror = function() {
+                // Nếu chưa có ảnh, mở ngay modal để người dùng bấm nút sinh ảnh AI
+                document.getElementById('previewContainer').innerHTML = `<div class="p-3 text-secondary small text-center"><i class="bi bi-image text-warning d-block fs-3 mb-2"></i>Chưa có file ảnh cho [${name}].<br>Bấm <b>"Bấm Sinh Ảnh Thử"</b> bên trái để AI tạo ảnh ngay!</div>`;
+                document.getElementById('btnSaveAsset').style.display = 'none';
+                const modal = new bootstrap.Modal(document.getElementById('newAssetModal'));
+                modal.show();
+            };
+            testImg.src = imgUrl;
+        }
+
+        async function deleteFilmProject(projectName, event) {
+            if (event) event.stopPropagation();
+            if (!confirm(`Bạn có chắc chắn muốn XÓA VĨNH VIỄN bộ phim [${projectName}] cùng toàn bộ kịch bản và asset không?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/project/${projectName}/delete`, { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert(data.message);
+                    if (currentProject === projectName) {
+                        currentProject = null;
+                        document.getElementById('projectDashboard').style.display = 'none';
+                        document.getElementById('noProjectAlert').style.display = 'block';
+                    }
+                    loadProjects();
+                } else {
+                    alert(data.message);
+                }
+            } catch (e) {
+                alert('Lỗi khi gửi lệnh xóa phim');
+            }
+        }
+
+        async function selectProject(name) {
+            currentProject = name;
+            loadProjects();
+            const res = await fetch(`/api/project/${name}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                const p = data.project;
+                document.getElementById('noProjectAlert').style.display = 'none';
+                document.getElementById('projectDashboard').style.display = 'block';
+                
+                // Hiển thị tên phim tiếng Việt có dấu đẹp đẽ
+                document.getElementById('curProjectTitle').innerText = p.title || p.name;
+                
+                // Hiển thị mô tả và hook tách biệt
+                let descHtml = '';
+                if (p.hook) {
+                    descHtml += `<div class="text-danger fw-bold small mb-1"><i class="bi bi-fire me-1"></i>"${p.hook}"</div>`;
+                }
+                descHtml += `<div class="text-secondary small">${p.description || 'Chưa có mô tả'}</div>`;
+                document.getElementById('curProjectDesc').innerHTML = descHtml;
+                
+                document.getElementById('curEpCount').innerText = (p.episodes || []).length;
+                document.getElementById('curAssetCount').innerText = Object.keys(p.assets || {}).length;
+
+                renderAssets(p.assets || {}, p.character_voices || {});
+                loadProjectScript(name);
+            }
+        }
+
+        let availableVoices = { vieneu: [], kokoro: [] };
+
+        async function loadVoices() {
+            try {
+                const res = await fetch('/api/voices');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    availableVoices = data;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function assignVoice(charId, selectEl) {
+            if (!currentProject) return;
+            const voiceId = selectEl.value;
+            const voiceName = selectEl.options[selectEl.selectedIndex].text;
+
+            try {
+                const res = await fetch(`/api/project/${currentProject}/assign_voice`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        character_id: charId,
+                        voice_id: voiceId,
+                        voice_name: voiceName
+                    })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert(`✅ ${data.message}`);
+                }
+            } catch (e) {
+                alert('Lỗi lưu giọng nhân vật');
+            }
+        }
+
+        function renderAssets(assets, characterVoices = {}) {
+            const grid = document.getElementById('assetsGrid');
+            grid.innerHTML = '';
+            const keys = Object.keys(assets);
+            if (keys.length === 0) {
+                grid.innerHTML = '<div class="text-secondary small">Chưa có asset nào được lưu. Hãy sinh ảnh ở Bước 1!</div>';
+                return;
+            }
+
+            keys.forEach(k => {
+                const a = assets[k];
+                const col = document.createElement('div');
+                col.className = 'col-md-4 col-sm-6';
+
+                const assignedVoice = characterVoices[k] ? characterVoices[k].voice_id : 'vieneu_nam_tre';
+                const isPerson = !k.startsWith('phao_dai_');
+
+                let voiceSelectHtml = '';
+                if (isPerson) {
+                    voiceSelectHtml = `
+                        <div class="mt-2 pt-2 border-top border-secondary">
+                            <label class="form-label text-info fw-bold" style="font-size: 0.75rem;"><i class="bi bi-mic me-1"></i>Giọng Đọc Nhân Vật:</label>
+                            <select class="form-select form-select-sm" style="font-size: 0.75rem;" onchange="assignVoice('${k}', this)">
+                                <optgroup label="VieNeu-TTS (Tiếng Việt Tự Nhiên)">
+                                    ${availableVoices.vieneu.map(v => `<option value="${v.id}" ${v.id === assignedVoice ? 'selected' : ''}>${v.name}</option>`).join('')}
+                                </optgroup>
+                                <optgroup label="Kokoro-TTS (Tiếng Anh/Quốc tế)">
+                                    ${availableVoices.kokoro.map(v => `<option value="${v.id}" ${v.id === assignedVoice ? 'selected' : ''}>${v.name}</option>`).join('')}
+                                </optgroup>
+                            </select>
+                        </div>
+                    `;
+                }
+
+                col.innerHTML = `
+                    <div class="card p-2 asset-card">
+                        <img src="/api/project/${currentProject}/asset_img/${a.file}" class="asset-preview mb-2" alt="${k}">
+                        <div class="fw-bold text-warning small">${k}</div>
+                        <div class="text-secondary" style="font-size: 0.75rem;">Seed: ${a.seed || 'N/A'}</div>
+                        ${voiceSelectHtml}
+                    </div>
+                `;
+                grid.appendChild(col);
+            });
+        }
+
+        let currentIdea = null;
+
+        async function suggestFilmIdea() {
+            const req = document.getElementById('ideaRequirement').value;
+            const card = document.getElementById('ideaResultCard');
+            
+            card.style.display = 'block';
+            document.getElementById('ideaTitle').innerHTML = '<span class="spinner-border spinner-border-sm text-warning me-2"></span> Đang tư duy ý tưởng cốt truyện mới...';
+            document.getElementById('ideaHook').innerText = 'Đang sáng tác câu giật tít...';
+            document.getElementById('ideaSynopsis').innerText = '';
+            
+            try {
+                const res = await fetch('/api/suggest_idea', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requirement: req })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    currentIdea = data.idea;
+                    document.getElementById('ideaTitle').innerText = currentIdea.title;
+                    document.getElementById('ideaHook').innerText = `"${currentIdea.hook}"`;
+                    document.getElementById('ideaSynopsis').innerText = currentIdea.synopsis;
+                    document.getElementById('ideaGenreBadge').innerText = currentIdea.genre;
+                }
+            } catch (e) {
+                document.getElementById('ideaTitle').innerHTML = '<span class="text-danger">Lỗi kết nối</span>';
+            }
+        }
+
+        async function approveAndCreateProject() {
+            if (!currentIdea) return;
+            const res = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: currentIdea.name,
+                    title: currentIdea.title,
+                    description: currentIdea.synopsis,
+                    hook: currentIdea.hook,
+                    poster_url: currentIdea.poster_url
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('newProjectModal')).hide();
+                await loadProjects();
+                selectProject(data.project.name);
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function createNewProject() {
+            const name = document.getElementById('newProjName').value;
+            const desc = document.getElementById('newProjDesc').value;
+            if (!name) return alert('Vui lòng nhập tên phim');
+
+            const res = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, description: desc })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('newProjectModal')).hide();
+                await loadProjects();
+                selectProject(data.project.name);
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function generateAssetPreview() {
+            if (!currentProject) return alert('Hãy chọn một bộ phim trước');
+            const name = document.getElementById('genAssetName').value;
+            const prompt = document.getElementById('genAssetPrompt').value;
+            if (!name || !prompt) return alert('Nhập đủ mã định danh và mô tả');
+
+            const btn = document.getElementById('btnGenPreview');
+            const container = document.getElementById('previewContainer');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang tạo ảnh từ Flux...';
+            container.innerHTML = '<span class="spinner-border text-warning me-2"></span> Đang vẽ chi tiết bằng mô hình Flux...';
+
+            currentSeed = Math.floor(Math.random() * 1000000);
+            try {
+                const res = await fetch(`/api/project/${currentProject}/generate_asset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ asset_name: name, prompt: prompt, seed: currentSeed })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    currentGeneratedUrl = data.preview_url;
+                    currentCachedFile = data.cached_file;
+                    container.innerHTML = `<img src="${data.preview_url}?t=${new Date().getTime()}" class="img-fluid rounded border border-secondary shadow" style="max-height: 250px;" alt="preview">`;
+                    document.getElementById('btnSaveAsset').style.display = 'block';
+                } else {
+                    container.innerHTML = `<span class="text-danger">${data.message}</span>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<span class="text-danger">Lỗi kết nối</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-dice-5 me-1"></i> Bấm Sinh Thử Lại (Seed Khác)';
+            }
+        }
+
+        async function saveCurrentAsset() {
+            const name = document.getElementById('genAssetName').value;
+            const prompt = document.getElementById('genAssetPrompt').value;
+            const res = await fetch(`/api/project/${currentProject}/save_asset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    asset_name: name,
+                    image_url: currentGeneratedUrl,
+                    cached_file: currentCachedFile,
+                    description: prompt,
+                    seed: currentSeed
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert(data.message);
+                bootstrap.Modal.getInstance(document.getElementById('newAssetModal')).hide();
+                selectProject(currentProject);
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function onPlatformChange() {
+            const plat = document.getElementById('accPlatform').value;
+            const lblUser = document.getElementById('lblUsername');
+            const lblUserHelp = document.getElementById('lblUsernameHelp');
+            const lblKey = document.getElementById('lblKey');
+            const lblKeyHelp = document.getElementById('lblKeyHelp');
+            const txtUser = document.getElementById('accUsername');
+
+            if (plat === 'kaggle') {
+                lblUser.innerText = '3. Username Kaggle:';
+                lblUserHelp.innerText = '(Tên tài khoản hiển thị trên Kaggle)';
+                txtUser.placeholder = 'VD: nguyenvanan';
+                lblKey.innerText = '4. Kaggle API Key:';
+                lblKeyHelp.innerText = '(Kaggle -> Settings -> Create New Token -> Mở file kaggle.json lấy key)';
+            } else {
+                lblUser.innerText = '3. Gmail / Ghi chú Colab:';
+                lblUserHelp.innerText = '(Email dùng cho Colab)';
+                txtUser.placeholder = 'VD: acc1@gmail.com';
+                lblKey.innerText = '4. Token / Ngrok Token:';
+                lblKeyHelp.innerText = '(Dùng token Ngrok hoặc HuggingFace để máy ảo chuyển video về server)';
+            }
+        }
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/accounts');
+                const data = await res.json();
+                const tbody = document.getElementById('accountsTableBody');
+                tbody.innerHTML = '';
+                
+                const all = [
+                    ...(data.accounts.kaggle || []).map(a => ({...a, type: 'Kaggle'})),
+                    ...(data.accounts.colab || []).map(a => ({...a, type: 'Colab'}))
+                ];
+
+                if (all.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-secondary small py-3">Chưa có tài khoản nào được lưu. Hãy thêm ở bảng trên!</td></tr>';
+                    return;
+                }
+
+                all.forEach(acc => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'small align-middle';
+                    tr.innerHTML = `
+                        <td><span class="badge ${acc.type === 'Kaggle' ? 'bg-primary' : 'bg-warning text-dark'}">${acc.type}</span></td>
+                        <td class="fw-bold">${acc.name}</td>
+                        <td class="text-secondary">${acc.username || 'N/A'}</td>
+                        <td id="status_${acc.id}"><span class="badge bg-secondary">Chưa kiểm tra</span></td>
+                        <td>
+                            <button class="btn btn-outline-info btn-sm py-0 px-2 me-1" title="Kiểm tra kết nối tài khoản này" onclick="testAccountConn('${acc.id}', this)">
+                                <i class="bi bi-broadcast"></i> Test Kết Nối
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-2" title="Xóa tài khoản" onclick="deleteAccount('${acc.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function testAccountConn(accId, btnEl) {
+            const originalHtml = btnEl.innerHTML;
+            btnEl.disabled = true;
+            btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+            const statusCell = document.getElementById(`status_${accId}`);
+            statusCell.innerHTML = '<span class="badge bg-warning text-dark"><span class="spinner-border spinner-border-sm"></span> Đang gửi lệnh ping...</span>';
+
+            try {
+                const res = await fetch('/api/accounts/test_connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: accId })
+                });
+                const data = await res.json();
+                if (data.status === 'success' && data.connected) {
+                    statusCell.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Hợp lệ (Online)</span>';
+                    alert(`✅ ${data.message}`);
+                } else {
+                    statusCell.innerHTML = '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Thất bại</span>';
+                    alert(`❌ ${data.message}`);
+                }
+            } catch (e) {
+                statusCell.innerHTML = '<span class="badge bg-danger">Lỗi mạng</span>';
+                alert('Không thể kết nối tới server');
+            } finally {
+                btnEl.disabled = false;
+                btnEl.innerHTML = originalHtml;
+            }
+        }
+
+        async function addNewAccount() {
+            const platform = document.getElementById('accPlatform').value;
+            const name = document.getElementById('accName').value;
+            const username = document.getElementById('accUsername').value;
+            const key = document.getElementById('accKey').value;
+
+            if (!name) return alert('Vui lòng nhập Tên gợi nhớ');
+
+            const res = await fetch('/api/accounts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ platform, name, username, key })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('accName').value = '';
+                document.getElementById('accUsername').value = '';
+                document.getElementById('accKey').value = '';
+                loadAccounts();
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function deleteAccount(id) {
+            if (!confirm('Bạn có chắc muốn xóa tài khoản này khỏi vòng xoay?')) return;
+            const res = await fetch('/api/accounts/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                loadAccounts();
+            }
+        }
+
+        // Khởi động
+        checkConnections();
+        loadProjects();
+        loadAccounts();
+        loadVoices();
+    </script>
+</body>
+</html>

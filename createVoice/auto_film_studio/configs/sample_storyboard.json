@@ -1,0 +1,20 @@
+[
+  {
+    "scene_id": "scene_001",
+    "character_ref": "linh_nam.png",
+    "voice_text": "Gió đông bắc tràn về, kinh thành Thăng Long chìm trong màn sương lạnh buốt.",
+    "video_motion_prompt": "Cinematic shot, young Vietnamese warrior in traditional dark tunic looking into the distance, cold wind blowing his hair and cloak, misty ancient citadel background, slow motion camera zoom in.",
+    "camera_motion": "slow_zoom_in",
+    "duration_target": 5.0,
+    "bgm_mood": "mysterious_ancient"
+  },
+  {
+    "scene_id": "scene_002",
+    "character_ref": "linh_nam.png",
+    "voice_text": "Chàng khẽ siết chặt thanh gươm trên tay, biết rằng trận chiến này không còn đường lui.",
+    "video_motion_prompt": "Close-up shot of the warrior's hand firmly gripping the hilt of an ornate ancient sword, determined expression, dramatic lighting, subtle breathing movement, cinematic 4k aesthetic.",
+    "camera_motion": "pan_up",
+    "duration_target": 5.0,
+    "bgm_mood": "tension_drums"
+  }
+]
